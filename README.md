@@ -68,7 +68,8 @@ Writers: Lucy (admin), Nemah, Luark, Enza, Chesco, DM.
 ## Documentation
 
 - [API map](docs/api-map.md) — REST endpoints
-- [Deployment](docs/DEPLOY.md) — Neon, Render, env vars, cold starts
+- [Deploy](docs/DEPLOY.md) — Neon + Render
+- [Local databases](docs/LOCAL-DATABASES.md) — embedded vs Docker vs Neon, and how to test edits
 
 ## Project layout
 
