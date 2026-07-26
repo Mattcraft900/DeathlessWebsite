@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/server/index.ts",
     "build": "npm run build:client && npm run build:server",
-    "build:client": "vite build",
-    "build:server": "tsc -p tsconfig.server.json",
+    "build:client": "npx vite build",
+    "build:server": "npx tsc -p tsconfig.server.json",
     "start": "node dist/server/index.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
@@ -22,21 +22,20 @@
     "drizzle-orm": "^0.44.2",
     "express": "^5.1.0",
     "fractional-indexing": "^3.2.0",
-    "pg": "^8.16.0"
-  },
-  "devDependencies": {
+    "pg": "^8.16.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.8",
     "@types/express": "^5.0.2",
     "@types/node": "^22.15.21",
-    "@types/pg": "^8.15.2",
+    "@types/pg": "^8.15.2"
+  },
+  "devDependencies": {
     "drizzle-kit": "^0.31.1",
     "embedded-postgres": "^18.4.0-beta.17",
-    "tsx": "^4.19.4",
-    "typescript": "^5.8.3",
-    "vite": "^6.3.5"
-  },
-  "allowScripts": {
+    "tsx": "^4.19.4"
+  },  "allowScripts": {
     "esbuild@0.18.20": true,
     "esbuild@0.25.12": true,
     "esbuild@0.28.1": true,

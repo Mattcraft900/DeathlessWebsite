@@ -69,15 +69,26 @@ npm run db:seed   # first deploy or when resetting content
 
 ## Render setup
 
-1. Connect the GitHub repository.
-2. **Build command:** `npm install && npm run build`
-3. **Start command:** `npm start`
-4. Add environment variables (`DATABASE_URL`, `SESSION_SECRET`, `NODE_ENV=production`).
-5. After first deploy, run migrations/seed from your machine pointing at Neon, or use a one-off Render shell:
+1. Push your latest code to GitHub (Render builds from the repo).
+2. Go to [dashboard.render.com](https://dashboard.render.com) → **New +** → **Web Service**.
+3. Connect **Mattcraft900/DeathlessWebsite** and pick branch `alpha` (or `main`).
+4. Settings:
+   - **Build command:** `npm install && npm run build`
+   - **Start command:** `npm start`
+   - **Instance type:** Free
+5. Environment variables:
 
-   ```bash
-   npm run db:migrate && npm run db:seed
-   ```
+   | Key | Value |
+   |-----|--------|
+   | `DATABASE_URL` | Neon connection string (`?sslmode=require`) |
+   | `SESSION_SECRET` | Long random string |
+   | `NODE_ENV` | `production` |
+
+6. **Create Web Service** and wait for the deploy.
+
+If the build fails with `vite: not found`, Vite/TypeScript must be in `dependencies` (not only `devDependencies`) so Render installs them when `NODE_ENV=production`. That is already set up in this repo.
+
+After a successful deploy, migrate/seed Neon from your laptop (see below), then open the Render URL.
 
 ### Cold starts
 
