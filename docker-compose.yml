@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: deathless
+      POSTGRES_PASSWORD: deathless
+      POSTGRES_DB: deathless
+    ports:
+      - "5432:5432"
+    volumes:
+      - deathless_pg:/var/lib/postgresql/data
+
+volumes:
+  deathless_pg:

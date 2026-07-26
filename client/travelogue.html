@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deathless | Travelogue</title>
+  <link rel="stylesheet" href="/styles/travelogue.css">
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/travelogue.js"></script>
+</head>
+<body>
+  <header id="site-header"></header>
+  <main>
+    <section id="intro">
+      <h2 id="intro-title" class="section-heading">Lucy's Travelogue</h2>
+      <p id="intro-blurb">
+        This page has the campaign log for the Deathless D&D campaign.
+        It's written in-universe by Lucy, with occasional corrections and insights from
+        Nemah and the rest of the party (each in their own voice style).<br>
+        Both the real-world session dates (plus unofficial names) and the in-game dates
+        are included; note that the in-game dates represent when Lucy wrote in the
+        journal (not necessarily the day the described events happened).
+      </p>
+      <div id="admin-session-panel" class="hidden edit-only">
+        <form id="new-session-form">
+          <label for="new-session-title">New session title</label>
+          <input id="new-session-title" name="title" type="text" required placeholder='e.g. 7.4.26 - "Next Stop"'>
+          <button type="submit" class="auth-btn">Add session</button>
+        </form>
+      </div>
+    </section>
+    <div id="format-settings">
+      <div id="checkboxes">
+        <div class="checkbox-div">
+          <input type="checkbox" id="session-check" checked>
+          <label for="session-check">Session dates/titles</label>
+        </div>
+        <div class="checkbox-div">
+          <input type="checkbox" id="game-date-check" checked>
+          <label for="game-date-check">In-game dates</label>
+        </div>
+      </div>
+      <div id="dropdown-div">
+        <label for="format-dropdown">Formatting:</label>
+        <select id="format-dropdown">
+          <option value="simple">Simple</option>
+          <option value="stylized" selected>Stylized</option>
+        </select>
+      </div>
+    </div>
+    <hr>
+    <div class="travelogue-layout">
+      <aside class="travelogue-sidebar" id="sessions-sidebar">
+        <div class="sidebar-section">
+          <h3>Sessions</h3>
+          <ul class="sidebar-list" id="sessions-sidebar-list"></ul>
+        </div>
+      </aside>
+      <div class="travelogue-main">
+        <div id="travelogue-sessions"></div>
+        <div id="load-more-wrap">
+          <button type="button" id="load-more-btn" class="hidden">Load more sessions</button>
+          <div id="scroll-sentinel" aria-hidden="true"></div>
+        </div>
+      </div>
+      <aside class="travelogue-sidebar" id="dates-sidebar">
+        <div class="sidebar-section">
+          <h3>In-game dates</h3>
+          <ul class="sidebar-list" id="dates-sidebar-list"></ul>
+        </div>
+      </aside>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,21 @@
+@import './shared.css';
+
+#intro-blurb {
+  text-align: justify;
+}
+
+.category-heading {
+  font-size: 1.3em;
+  margin: 2em 0 0.5em;
+  text-align: left;
+}
+
+.opc-gallery {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media screen and (min-width: 600px) {
+  .opc-gallery {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

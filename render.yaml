@@ -1,0 +1,15 @@
+# Exported Render Blueprint (optional — you can also configure in the dashboard)
+services:
+  - type: web
+    name: deathless-website
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true

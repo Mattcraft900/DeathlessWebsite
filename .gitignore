@@ -41,6 +41,9 @@ build/Release
 node_modules/
 jspm_packages/
 
+# Embedded local Postgres data
+.pgdata/
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 
@@ -68,6 +71,7 @@ web_modules/
 # dotenv environment variable files
 .env
 .env.*
+!.env.example
 !.env.example
 
 # parcel-bundler cache (https://parceljs.org/)
