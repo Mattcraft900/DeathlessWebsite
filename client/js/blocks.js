@@ -43,6 +43,16 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
   }
 
   if (editable && writer) {
+    container._editBase = {
+      version: entry.version,
+      blocks: (entry.blocks || []).map((b) => ({
+        id: b.id,
+        writerId: b.writerId,
+        body: b.body,
+        sortRank: b.sortRank,
+      })),
+    };
+
     container.onclick = (e) => {
       if (e.target !== container) return;
       insertOwnBlockAtEnd(container, writer);
@@ -56,6 +66,7 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
     container.appendChild(saveBtn);
   } else {
     container.onclick = null;
+    delete container._editBase;
   }
 }
 
@@ -375,28 +386,247 @@ function mergeAdjacentSameWriter(blocks) {
   return merged;
 }
 
-export async function saveEntryBlocks(container, entry, retried = false) {
+function clonePayloadBlock(b) {
+  const out = {
+    writerId: b.writerId,
+    body: b.body,
+    sortRank: b.sortRank,
+  };
+  if (b.id) out.id = b.id;
+  return out;
+}
+
+function indexBlocksById(blocks) {
+  const map = new Map();
+  for (const b of blocks) {
+    if (b.id) map.set(b.id, b);
+  }
+  return map;
+}
+
+function rerankBlocks(blocks) {
+  let prev = null;
+  return blocks.map((b) => {
+    const sortRank = generateKeyBetween(prev, null);
+    prev = sortRank;
+    return { ...b, sortRank };
+  });
+}
+
+function isForeignShorten(baseBody, nextBody) {
+  if (baseBody === nextBody) return false;
+  if (baseBody.startsWith(nextBody) && nextBody.length < baseBody.length) return true;
+  if (baseBody.endsWith(nextBody) && nextBody.length < baseBody.length) return true;
+  return false;
+}
+
+function foreignRemainder(baseBody, keptBody) {
+  if (baseBody.startsWith(keptBody) && keptBody.length < baseBody.length) {
+    return baseBody.slice(keptBody.length);
+  }
+  if (baseBody.endsWith(keptBody) && keptBody.length < baseBody.length) {
+    return baseBody.slice(0, baseBody.length - keptBody.length);
+  }
+  return "";
+}
+
+/** True if the split remainder already exists after the shortened prefix on remote. */
+function hasContinuationAfter(result, afterId, remainder, foreignWriterId) {
+  if (!remainder) return false;
+  const idx = result.findIndex((r) => r.id === afterId);
+  if (idx < 0) return false;
+  for (let j = idx + 1; j < result.length; j++) {
+    const b = result[j];
+    if (b.writerId === foreignWriterId && b.body === remainder) return true;
+  }
+  return false;
+}
+
+/**
+ * 3-way merge for concurrent saves: start from remote, overlay this writer's
+ * deletions/updates/splits/inserts from local relative to base.
+ */
+function mergeBlocks(base, local, remote, writerId) {
+  const baseArr = base || [];
+  const remoteArr = remote || [];
+  const baseById = indexBlocksById(baseArr);
+  const localById = indexBlocksById(local);
+  const remoteById = indexBlocksById(remoteArr);
+  const isAdmin = Boolean(getCurrentWriter()?.isAdmin);
+
+  let result = remoteArr.map(clonePayloadBlock);
+
+  const deletedIds = new Set();
+  for (const b of baseArr) {
+    if (b.id && b.writerId === writerId && !localById.has(b.id)) {
+      deletedIds.add(b.id);
+    }
+  }
+  result = result.filter((b) => !(b.id && deletedIds.has(b.id)));
+
+  for (const b of local) {
+    if (!b.id) continue;
+    const target = result.find((r) => r.id === b.id);
+    if (!target) continue;
+    if (target.writerId === writerId) {
+      target.body = b.body;
+    } else if (isAdmin) {
+      const baseBlock = baseById.get(b.id);
+      if (baseBlock && b.body !== baseBlock.body) {
+        target.body = b.body;
+      }
+    }
+  }
+
+  // Apply compatible foreign shortens (mid-split prefix still untouched on remote)
+  for (const b of local) {
+    if (!b.id) continue;
+    const baseBlock = baseById.get(b.id);
+    if (!baseBlock || baseBlock.writerId === writerId) continue;
+    if (!isForeignShorten(baseBlock.body, b.body)) continue;
+    const remoteBlock = remoteById.get(b.id);
+    const target = result.find((r) => r.id === b.id);
+    if (target && remoteBlock && remoteBlock.body === baseBlock.body) {
+      target.body = b.body;
+    }
+  }
+
+  // Insert no-id runs from local using surviving id anchors
+  const insertOps = [];
+  let i = 0;
+  while (i < local.length) {
+    if (local[i].id) {
+      i += 1;
+      continue;
+    }
+
+    const run = [];
+    while (i < local.length && !local[i].id) {
+      run.push(clonePayloadBlock(local[i]));
+      i += 1;
+    }
+
+    let afterId = null;
+    for (let k = i - run.length - 1; k >= 0; k--) {
+      if (local[k].id && result.some((r) => r.id === local[k].id)) {
+        afterId = local[k].id;
+        break;
+      }
+    }
+
+    let beforeId = null;
+    if (i < local.length && local[i].id && result.some((r) => r.id === local[i].id)) {
+      beforeId = local[i].id;
+    }
+
+    let blocksToInsert = run;
+    if (afterId) {
+      const baseBlock = baseById.get(afterId);
+      const localParent = localById.get(afterId);
+      const remoteBlock = remoteById.get(afterId);
+      const target = result.find((r) => r.id === afterId);
+      if (
+        baseBlock &&
+        localParent &&
+        baseBlock.writerId !== writerId &&
+        isForeignShorten(baseBlock.body, localParent.body)
+      ) {
+        const remainder = foreignRemainder(baseBlock.body, localParent.body);
+        // Only this merge shortened a still-intact remote block → keep foreign continuation.
+        // If another writer already split the same place, skip re-inserting the second half.
+        const shortenedHere =
+          Boolean(remoteBlock && remoteBlock.body === baseBlock.body && target?.body === localParent.body);
+        const contAlreadyThere = hasContinuationAfter(
+          result,
+          afterId,
+          remainder,
+          baseBlock.writerId,
+        );
+        if (!shortenedHere || contAlreadyThere) {
+          blocksToInsert = run.filter((x) => x.writerId === writerId);
+        }
+      }
+    }
+
+    if (blocksToInsert.length) {
+      insertOps.push({ afterId, beforeId, blocks: blocksToInsert });
+    }
+  }
+
+  // Apply inserts in local order without reversing when multiple runs share an anchor
+  const afterBatches = new Map();
+  const beforeBatches = new Map();
+  const appendBlocks = [];
+
+  for (const op of insertOps) {
+    const blocks = op.blocks.map(clonePayloadBlock);
+    if (op.afterId && result.some((r) => r.id === op.afterId)) {
+      const list = afterBatches.get(op.afterId) || [];
+      list.push(...blocks);
+      afterBatches.set(op.afterId, list);
+    } else if (op.beforeId && result.some((r) => r.id === op.beforeId)) {
+      const list = beforeBatches.get(op.beforeId) || [];
+      list.push(...blocks);
+      beforeBatches.set(op.beforeId, list);
+    } else {
+      appendBlocks.push(...blocks);
+    }
+  }
+
+  const rebuilt = [];
+  for (const b of result) {
+    if (b.id && beforeBatches.has(b.id)) {
+      rebuilt.push(...beforeBatches.get(b.id));
+      beforeBatches.delete(b.id);
+    }
+    rebuilt.push(b);
+    if (b.id && afterBatches.has(b.id)) {
+      rebuilt.push(...afterBatches.get(b.id));
+    }
+  }
+  for (const leftover of beforeBatches.values()) {
+    rebuilt.unshift(...leftover);
+  }
+  rebuilt.push(...appendBlocks);
+  result = rebuilt;
+
+  return mergeAdjacentSameWriter(rerankBlocks(result));
+}
+
+const MAX_CONFLICT_RETRIES = 5;
+
+export async function saveEntryBlocks(container, entry) {
   const writer = getCurrentWriter();
   if (!writer) return;
 
-  const version = Number(container.dataset.version || entry.version);
-  const gathered = gatherBlocksFromDom(container);
+  const local = gatherBlocksFromDom(container);
+  let version = Number(container.dataset.version || entry.version);
+  let payload = local;
 
-  try {
-    const data = await apiPut(`/entries/${entry.id}/blocks`, {
-      version,
-      blocks: gathered,
-    });
-    container.dataset.version = String(data.entry.version);
-    renderEntryBlocks(container, data.entry, { editable: true });
-  } catch (err) {
-    if (err.status === 409 && !retried && err.data?.entry) {
-      container.dataset.version = String(err.data.entry.version);
-      renderEntryBlocks(container, err.data.entry, { editable: true });
-      return saveEntryBlocks(container, err.data.entry, true);
+  for (let attempt = 0; attempt <= MAX_CONFLICT_RETRIES; attempt++) {
+    try {
+      const data = await apiPut(`/entries/${entry.id}/blocks`, {
+        version,
+        blocks: payload,
+      });
+      container.dataset.version = String(data.entry.version);
+      renderEntryBlocks(container, data.entry, { editable: true });
+      return;
+    } catch (err) {
+      if (err.status === 409 && err.data?.entry && attempt < MAX_CONFLICT_RETRIES) {
+        const remoteEntry = err.data.entry;
+        const base = container._editBase?.blocks ?? [];
+        payload = mergeBlocks(base, local, remoteEntry.blocks || [], writer.id);
+        version = Number(remoteEntry.version);
+        container.dataset.version = String(version);
+        continue;
+      }
+      alert(err.data?.error || err.message || "Save failed");
+      return;
     }
-    alert(err.data?.error || err.message || "Save failed");
   }
+
+  alert("Save failed: too many concurrent edits. Try again.");
 }
 
 export function applyFormatToBlocks(root) {
