@@ -41,6 +41,7 @@ export const characters = pgTable("characters", {
   playerName: text("player_name"),
   locationHome: text("location_home"),
   locationLast: text("location_last"),
+  // COLLATE "C" in DB — fractional ranks must use byte order, not locale
   sortRank: text("sort_rank").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -52,6 +53,7 @@ export const entries = pgTable("entries", {
   parentId: uuid("parent_id"),
   characterId: uuid("character_id").references(() => characters.id),
   dateKey: text("date_key"),
+  // COLLATE "C" in DB — fractional ranks must use byte order, not locale
   sortRank: text("sort_rank").notNull(),
   showHeading: boolean("show_heading").notNull().default(true),
   version: integer("version").notNull().default(1),
@@ -68,6 +70,7 @@ export const blocks = pgTable("blocks", {
     .notNull()
     .references(() => writers.id),
   body: text("body").notNull(),
+  // COLLATE "C" in DB — fractional ranks must use byte order, not locale
   sortRank: text("sort_rank").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

@@ -28,7 +28,9 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
       editable && writer && (writer.isAdmin || writer.id === block.writerId);
     span.contentEditable = canEdit ? "true" : "false";
 
-    if (!canEdit && editable && writer) {
+    if (canEdit) {
+      wireOwnEditable(span);
+    } else if (editable && writer) {
       span.tabIndex = -1;
       span.title = "Click where you want to insert your commentary";
       span.addEventListener("click", (e) => {
@@ -57,26 +59,100 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
   }
 }
 
-function insertOwnBlockAfter(afterSpan, writer) {
-  const formatMode = getFormatMode();
-  const next = afterSpan.nextElementSibling?.classList?.contains("entry-block")
-    ? afterSpan.nextElementSibling
-    : null;
-  const span = document.createElement("span");
-  span.className = `entry-block ${writer.cssClass} ${formatMode}`;
-  span.dataset.writerId = writer.id;
-  span.dataset.sortRank = generateKeyBetween(
-    afterSpan.dataset.sortRank ?? null,
-    next?.dataset.sortRank ?? null,
-  );
-  span.contentEditable = "true";
-  span.textContent = "";
-  afterSpan.after(span);
-  span.focus();
+function isEntryBlock(el) {
+  return el instanceof HTMLElement && el.classList.contains("entry-block");
 }
 
-/** Split a foreign block at the click point and insert an empty own-voice block between. */
-function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
+function blockSibling(span, direction) {
+  const el = direction === "prev" ? span.previousElementSibling : span.nextElementSibling;
+  return isEntryBlock(el) ? el : null;
+}
+
+function isOwnEditableBlock(el, writer) {
+  return isEntryBlock(el) && el.isContentEditable && el.dataset.writerId === writer.id;
+}
+
+function isBlank(el) {
+  return !(el.textContent ?? "").trim();
+}
+
+function syncEmptyAttr(el) {
+  if (isBlank(el)) el.dataset.empty = "true";
+  else delete el.dataset.empty;
+}
+
+function isUnsavedContinuation(el, writerId) {
+  return (
+    isEntryBlock(el) &&
+    !el.isContentEditable &&
+    el.dataset.writerId === writerId &&
+    !el.dataset.blockId &&
+    el.dataset.splitContinuation === "1"
+  );
+}
+
+/** Remove empty own blocks on blur; rejoin unused mid-split foreign halves. */
+function discardIfEmpty(span) {
+  if (!span.isConnected || !isBlank(span)) {
+    syncEmptyAttr(span);
+    return;
+  }
+
+  const prev = blockSibling(span, "prev");
+  const next = blockSibling(span, "next");
+  if (
+    prev &&
+    next &&
+    prev.dataset.writerId &&
+    isUnsavedContinuation(next, prev.dataset.writerId)
+  ) {
+    prev.textContent = `${prev.textContent ?? ""}${next.textContent ?? ""}`;
+    next.remove();
+    span.remove();
+    return;
+  }
+
+  span.remove();
+}
+
+function wireOwnEditable(span) {
+  syncEmptyAttr(span);
+  span.addEventListener("input", () => syncEmptyAttr(span));
+  span.addEventListener("blur", () => {
+    setTimeout(() => discardIfEmpty(span), 0);
+  });
+}
+
+function distanceToRect(x, y, rect) {
+  const dx = x < rect.left ? rect.left - x : x > rect.right ? x - rect.right : 0;
+  const dy = y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0;
+  return Math.hypot(dx, dy);
+}
+
+function focusBlockCaret(span, atEnd) {
+  span.focus();
+  const selection = window.getSelection();
+  if (!selection) return;
+  const range = document.createRange();
+  const textNode = [...span.childNodes].find((n) => n.nodeType === Node.TEXT_NODE);
+  if (textNode) {
+    const len = textNode.textContent?.length ?? 0;
+    range.setStart(textNode, atEnd ? len : 0);
+    range.collapse(true);
+  } else {
+    range.selectNodeContents(span);
+    range.collapse(!atEnd);
+  }
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+/**
+ * Clicks on the edge of an own editable often hit-test onto the neighboring
+ * foreign span; caretRangeFromPoint then snaps to the *far* end of that span.
+ * Snap offset to the near edge when the pointer is hugging a sibling block.
+ */
+function resolveClickOffset(foreignSpan, clientX, clientY) {
   const text = foreignSpan.textContent ?? "";
   let offset = text.length;
 
@@ -95,14 +171,87 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
   }
 
   offset = Math.max(0, Math.min(offset, text.length));
+
+  const prev = blockSibling(foreignSpan, "prev");
+  const next = blockSibling(foreignSpan, "next");
+  const prevDist = prev ? distanceToRect(clientX, clientY, prev.getBoundingClientRect()) : Infinity;
+  const nextDist = next ? distanceToRect(clientX, clientY, next.getBoundingClientRect()) : Infinity;
+  const edgeSlop = 8;
+
+  if (nextDist <= edgeSlop && nextDist <= prevDist) offset = text.length;
+  else if (prevDist <= edgeSlop) offset = 0;
+
+  return offset;
+}
+
+function insertOwnBlockAfter(afterSpan, writer) {
+  const next = blockSibling(afterSpan, "next");
+  if (isOwnEditableBlock(next, writer)) {
+    focusBlockCaret(next, false);
+    return;
+  }
+
   const formatMode = getFormatMode();
+  const span = document.createElement("span");
+  span.className = `entry-block ${writer.cssClass} ${formatMode}`;
+  span.dataset.writerId = writer.id;
+  span.dataset.sortRank = generateKeyBetween(
+    afterSpan.dataset.sortRank ?? null,
+    next?.dataset.sortRank ?? null,
+  );
+  span.contentEditable = "true";
+  span.textContent = "";
+  wireOwnEditable(span);
+  afterSpan.after(span);
+  focusBlockCaret(span, false);
+}
+
+function insertOwnBlockBefore(beforeSpan, writer) {
+  const prev = blockSibling(beforeSpan, "prev");
+  if (isOwnEditableBlock(prev, writer)) {
+    focusBlockCaret(prev, true);
+    return;
+  }
+
+  const formatMode = getFormatMode();
+  const span = document.createElement("span");
+  span.className = `entry-block ${writer.cssClass} ${formatMode}`;
+  span.dataset.writerId = writer.id;
+  span.dataset.sortRank = generateKeyBetween(
+    prev?.dataset.sortRank ?? null,
+    beforeSpan.dataset.sortRank ?? null,
+  );
+  span.contentEditable = "true";
+  span.textContent = "";
+  wireOwnEditable(span);
+  beforeSpan.before(span);
+  focusBlockCaret(span, false);
+}
+
+/** Split a foreign block at the click point and insert an empty own-voice block between. */
+function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
+  const text = foreignSpan.textContent ?? "";
+  const offset = resolveClickOffset(foreignSpan, clientX, clientY);
   const before = text.slice(0, offset);
   const after = text.slice(offset);
-  const next = foreignSpan.nextElementSibling?.classList?.contains("entry-block")
-    ? foreignSpan.nextElementSibling
-    : null;
+  const next = blockSibling(foreignSpan, "next");
   const baseRank = foreignSpan.dataset.sortRank ?? null;
   const afterRank = next?.dataset.sortRank ?? null;
+
+  // Edge click next to an existing own block → edit that block, don't insert again.
+  if (!before.trim()) {
+    const prev = blockSibling(foreignSpan, "prev");
+    if (isOwnEditableBlock(prev, writer)) {
+      focusBlockCaret(prev, true);
+      return;
+    }
+  }
+  if (!after.trim()) {
+    if (isOwnEditableBlock(next, writer)) {
+      focusBlockCaret(next, false);
+      return;
+    }
+  }
 
   if (!before.trim() && !after.trim()) {
     insertOwnBlockAfter(foreignSpan, writer);
@@ -110,20 +259,7 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
   }
 
   if (!before.trim()) {
-    // Insert before this block
-    const span = document.createElement("span");
-    span.className = `entry-block ${writer.cssClass} ${formatMode}`;
-    span.dataset.writerId = writer.id;
-    span.dataset.sortRank = generateKeyBetween(null, baseRank);
-    // Need rank before foreign — use generateKeyBetween(prev, foreign)
-    const prev = foreignSpan.previousElementSibling?.classList?.contains("entry-block")
-      ? foreignSpan.previousElementSibling
-      : null;
-    span.dataset.sortRank = generateKeyBetween(prev?.dataset.sortRank ?? null, baseRank);
-    span.contentEditable = "true";
-    span.textContent = "";
-    foreignSpan.before(span);
-    span.focus();
+    insertOwnBlockBefore(foreignSpan, writer);
     return;
   }
 
@@ -136,6 +272,7 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
   foreignSpan.textContent = before;
   const midRank = generateKeyBetween(baseRank, afterRank);
   const afterOwnRank = generateKeyBetween(midRank, afterRank);
+  const formatMode = getFormatMode();
 
   const own = document.createElement("span");
   own.className = `entry-block ${writer.cssClass} ${formatMode}`;
@@ -143,11 +280,13 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
   own.dataset.sortRank = midRank;
   own.contentEditable = "true";
   own.textContent = "";
+  wireOwnEditable(own);
 
   const continuation = document.createElement("span");
   continuation.className = foreignSpan.className;
   continuation.dataset.writerId = foreignSpan.dataset.writerId;
   continuation.dataset.sortRank = afterOwnRank;
+  continuation.dataset.splitContinuation = "1";
   continuation.contentEditable = "false";
   continuation.textContent = after;
   continuation.title = "Click where you want to insert your commentary";
@@ -157,26 +296,26 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
   });
 
   foreignSpan.after(own, continuation);
-  own.focus();
+  focusBlockCaret(own, false);
 }
+
 function insertOwnBlockAtEnd(container, writer) {
   const formatMode = getFormatMode();
+  const last = container.querySelector(".entry-block:last-of-type");
   const span = document.createElement("span");
   span.className = `entry-block ${writer.cssClass} ${formatMode}`;
   span.dataset.writerId = writer.id;
-  span.dataset.sortRank = generateKeyBetween(
-    container.querySelector(".entry-block:last-of-type")?.dataset.sortRank ?? null,
-    null,
-  );
+  span.dataset.sortRank = generateKeyBetween(last?.dataset.sortRank ?? null, null);
   span.contentEditable = "true";
   span.textContent = "";
+  wireOwnEditable(span);
   const saveBtn = container.querySelector(".save-blocks-btn");
   if (saveBtn) {
     container.insertBefore(span, saveBtn);
   } else {
     container.appendChild(span);
   }
-  span.focus();
+  focusBlockCaret(span, false);
 }
 
 function gatherBlocksFromDom(container) {

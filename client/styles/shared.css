@@ -286,14 +286,16 @@ hr {
   white-space: pre-wrap;
 }
 
-.entry-block[contenteditable="true"] {
+.entry-block[contenteditable="true"]:not([data-empty="true"]) {
   outline: 1px dashed var(--secondary2-color);
   outline-offset: 2px;
   border-radius: 2px;
 }
 
 .entry-block[contenteditable="true"]:focus {
-  outline-color: var(--primary1-color);
+  outline: 1px dashed var(--primary1-color);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .save-blocks-btn {

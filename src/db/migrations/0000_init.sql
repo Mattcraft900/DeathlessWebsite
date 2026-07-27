@@ -4,7 +4,7 @@ CREATE TYPE "public"."entry_type" AS ENUM('travelogue_session', 'game_date', 'ch
 	"entry_id" uuid NOT NULL,
 	"writer_id" uuid NOT NULL,
 	"body" text NOT NULL,
-	"sort_rank" text NOT NULL,
+	"sort_rank" text COLLATE "C" NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -26,7 +26,7 @@ CREATE TABLE "characters" (
 	"player_name" text,
 	"location_home" text,
 	"location_last" text,
-	"sort_rank" text NOT NULL,
+	"sort_rank" text COLLATE "C" NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "characters_slug_unique" UNIQUE("slug")
 );
@@ -38,7 +38,7 @@ CREATE TABLE "entries" (
 	"parent_id" uuid,
 	"character_id" uuid,
 	"date_key" text,
-	"sort_rank" text NOT NULL,
+	"sort_rank" text COLLATE "C" NOT NULL,
 	"show_heading" boolean DEFAULT true NOT NULL,
 	"version" integer DEFAULT 1 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
