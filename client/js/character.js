@@ -1,7 +1,8 @@
 import { apiGet } from "./api.js";
-import { onAuthChange } from "./auth-ui.js";
+import { initAuth, onAuthChange } from "./auth-ui.js";
 import { applyFormatToBlocks, renderEntryBlocks } from "./blocks.js";
 import { attachDetailPortrait } from "./character-images.js";
+import { initEditChrome, isEditMode } from "./edit-chrome.js";
 
 function classesToString(classes) {
   if (!classes?.length) return "";
@@ -34,7 +35,7 @@ function showNotFound(main) {
 
 function renderCharacter(main, data) {
   const { character, bio } = data;
-  const editable = Boolean(document.body.classList.contains("logged-in"));
+  const editable = isEditMode();
 
   main.innerHTML = `
     <h1 id="character-name"></h1>
@@ -84,8 +85,8 @@ function renderCharacter(main, data) {
   }
 
   const desc = document.getElementById("character-description");
-  if (bio?.blocks?.length) {
-    renderEntryBlocks(desc, { ...bio, blocks: bio.blocks }, { editable });
+  if (bio) {
+    renderEntryBlocks(desc, { ...bio, blocks: bio.blocks || [] }, { editable });
   } else {
     desc.innerHTML = `<p><em>No biography yet.</em></p>`;
   }
@@ -96,6 +97,9 @@ function renderCharacter(main, data) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  await initAuth();
+  initEditChrome();
+
   const main = document.querySelector("main");
   const slug = getSlugFromPath();
 
@@ -109,6 +113,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderCharacter(main, data);
 
     onAuthChange(() => {
+      if (isEditMode()) return;
       apiGet(`/characters/${encodeURIComponent(slug)}`).then((fresh) => {
         renderCharacter(main, fresh);
       });

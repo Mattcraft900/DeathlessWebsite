@@ -1,6 +1,7 @@
 import { apiGet, apiPost } from "./api.js";
-import { getCurrentWriter, onAuthChange } from "./auth-ui.js";
+import { getCurrentWriter, initAuth, onAuthChange } from "./auth-ui.js";
 import { applyFormatToBlocks, renderEntryBlocks } from "./blocks.js";
+import { initEditChrome, isEditMode } from "./edit-chrome.js";
 
 const sessionsContainer = document.getElementById("travelogue-sessions");
 const loadMoreBtn = document.getElementById("load-more-btn");
@@ -88,8 +89,7 @@ async function loadSessions(append = false) {
     if (append && nextCursor) qs.set("after", nextCursor);
 
     const data = await apiGet(`/travelogue/sessions?${qs}`);
-    const writer = getCurrentWriter();
-    const editable = Boolean(writer);
+    const editable = isEditMode();
 
     if (!append) sessionsContainer.innerHTML = "";
 
@@ -179,6 +179,9 @@ async function refreshToc() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  await initAuth();
+  initEditChrome();
+
   try {
     await refreshToc();
   } catch (err) {
@@ -215,6 +218,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   onAuthChange(() => {
     updateAdminPanel();
-    loadSessions(false);
+    // Avoid wiping in-progress edits when login unlocks Edit mode
+    if (!isEditMode()) loadSessions(false);
   });
 });

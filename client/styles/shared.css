@@ -68,13 +68,16 @@ header {
   background-color: var(--nav-background-color);
   color: var(--nav-link-color);
   text-align: right;
+  position: sticky;
+  top: 0;
+  z-index: 850;
 }
 
 .header-inner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.5em;
 }
 
@@ -135,29 +138,12 @@ nav a {
   border-top: solid 3px var(--secondary1-color);
 }
 
-#auth-control {
-  padding: 0.5em 1em;
-  font-size: 0.85em;
-  text-align: left;
-}
-
-.auth-label {
-  font-family: var(--heading-font);
-  font-size: 0.9em;
-}
-
-.auth-writer-name {
-  font-weight: bold;
-  color: var(--offwhite);
-}
-
 .auth-btn {
   background: var(--accent-color);
   color: var(--primary1-color);
   border: none;
   border-radius: 6px;
   padding: 0.35em 0.75em;
-  margin-left: 0.5em;
   font-family: var(--paragraph-font);
   font-size: 0.85em;
   cursor: pointer;
@@ -165,6 +151,37 @@ nav a {
 
 .auth-btn:hover {
   background: var(--offwhite);
+}
+
+.auth-btn-ghost {
+  background: transparent;
+  color: var(--paragraph-color-on-white);
+  border: 1px solid var(--secondary2-color);
+}
+
+.auth-btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.auth-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.auth-account-actions {
+  flex-direction: column;
+  justify-content: stretch;
+  gap: 0.75em;
+}
+
+.auth-account-actions .auth-btn {
+  flex: none;
+  width: 100%;
+  margin: 0;
+  padding: 0.75em 0.5em;
+  font-size: 1em;
+  text-align: center;
 }
 
 .auth-modal-backdrop {
@@ -175,6 +192,7 @@ nav a {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 1em;
 }
 
 .auth-modal {
@@ -182,13 +200,19 @@ nav a {
   color: var(--paragraph-color-on-white);
   padding: 1.5em;
   border-radius: 12px;
-  min-width: min(90vw, 360px);
+  width: min(90vw, 360px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .auth-modal h3 {
   margin-bottom: 1em;
   font-size: 1.2em;
+}
+
+.auth-confirm-message {
+  margin: 0 0 0.25em;
+  font-size: 0.95em;
+  line-height: 1.4;
 }
 
 .auth-modal label {
@@ -201,7 +225,7 @@ nav a {
 .auth-modal select {
   width: 100%;
   padding: 0.5em;
-  font-size: 0.9em;
+  font-size: 1em;
   border: 1px solid var(--secondary2-color);
   border-radius: 6px;
 }
@@ -213,18 +237,158 @@ nav a {
   justify-content: flex-end;
 }
 
+.auth-confirm-actions {
+  justify-content: stretch;
+  gap: 0.75em;
+}
+
+.auth-confirm-actions .auth-btn {
+  flex: 1 1 0;
+  margin: 0;
+  padding: 0.75em 0.5em;
+  font-size: 1em;
+  text-align: center;
+}
+
 .auth-error {
   color: var(--primary1-color);
   font-size: 0.85em;
   margin-top: 0.5em;
 }
 
-body.logged-in .edit-only {
-  display: initial;
+/* Floating edit chrome (entry pages) */
+.edit-fab,
+.edit-footer {
+  transition: transform 0.25s ease, opacity 0.25s ease;
 }
 
-body:not(.logged-in) .edit-only {
-  display: none;
+.edit-fab[hidden],
+.edit-footer[hidden] {
+  display: none !important;
+}
+
+.edit-fab.edit-chrome-hidden {
+  transform: translateY(calc(100% + 2rem));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.edit-footer.edit-chrome-hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Mobile: tuck sticky header away while the soft keyboard is up */
+@media screen and (max-width: 599px) {
+  #site-header {
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+
+  #site-header.edit-header-hidden {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.edit-fab {
+  position: fixed;
+  z-index: 900;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary2-color);
+  color: var(--offwhite);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.edit-fab:hover,
+.edit-fab:focus-visible {
+  background: var(--primary1-color);
+  outline: none;
+}
+
+.edit-fab-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.edit-footer {
+  position: fixed;
+  z-index: 900;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 0;
+  background: var(--nav-background-color);
+  border-top: 3px solid var(--secondary1-color);
+  padding: 0.5rem max(0.5rem, env(safe-area-inset-right))
+    max(0.5rem, env(safe-area-inset-bottom))
+    max(0.5rem, env(safe-area-inset-left));
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.edit-footer-btn {
+  flex: 1 1 0;
+  min-height: 48px;
+  margin: 0.25rem;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--heading-font);
+  font-size: 1.05em;
+  font-weight: bold;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.edit-footer-save {
+  background: var(--accent-color);
+  color: var(--primary1-color);
+}
+
+.edit-footer-save:hover,
+.edit-footer-save:focus-visible {
+  background: var(--offwhite);
+  outline: none;
+}
+
+.edit-footer-save:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.edit-footer-cancel {
+  background: transparent;
+  color: var(--offwhite);
+  border: 1px solid var(--secondary1-color);
+}
+
+.edit-footer-cancel:hover,
+.edit-footer-cancel:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+body.edit-mode {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
 }
 
 .section-heading {
@@ -296,22 +460,6 @@ hr {
   outline: 1px dashed var(--primary1-color);
   outline-offset: 2px;
   border-radius: 2px;
-}
-
-.save-blocks-btn {
-  display: block;
-  margin: 1em auto;
-  padding: 0.5em 1.5em;
-  background: var(--primary2-color);
-  color: var(--offwhite);
-  border: none;
-  border-radius: 8px;
-  font-family: var(--heading-font);
-  cursor: pointer;
-}
-
-.save-blocks-btn:hover {
-  background: var(--primary1-color);
 }
 
 .voice-lucy.stylized,

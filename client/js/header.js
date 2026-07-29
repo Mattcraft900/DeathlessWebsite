@@ -1,4 +1,4 @@
-import { initAuth, renderAuthControl } from "./auth-ui.js";
+import { initAuth } from "./auth-ui.js";
 
 function buildHeader() {
   const header = document.getElementById("site-header");
@@ -31,14 +31,10 @@ function buildHeader() {
   });
 
   nav.appendChild(menuList);
-
-  const authControl = document.createElement("div");
-  authControl.id = "auth-control";
-
-  inner.append(menuBtn, nav, authControl);
+  inner.append(menuBtn, nav);
   header.appendChild(inner);
 
-  initAuth().then(() => renderAuthControl(authControl));
+  initAuth();
 }
 
 document.addEventListener("DOMContentLoaded", buildHeader);

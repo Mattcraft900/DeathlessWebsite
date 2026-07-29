@@ -22,7 +22,7 @@ function closeModal() {
   if (backdrop) backdrop.remove();
 }
 
-function showModal(title, fields, onSubmit) {
+function showModal(title, fields, onSubmit, { onCancel } = {}) {
   closeModal();
   const backdrop = document.createElement("div");
   backdrop.className = "auth-modal-backdrop";
@@ -71,7 +71,10 @@ function showModal(title, fields, onSubmit) {
   cancelBtn.type = "button";
   cancelBtn.className = "auth-btn";
   cancelBtn.textContent = "Cancel";
-  cancelBtn.addEventListener("click", closeModal);
+  cancelBtn.addEventListener("click", () => {
+    closeModal();
+    onCancel?.();
+  });
   const submitBtn = document.createElement("button");
   submitBtn.type = "submit";
   submitBtn.className = "auth-btn";
@@ -95,132 +98,195 @@ function showModal(title, fields, onSubmit) {
   });
 
   backdrop.addEventListener("click", (e) => {
-    if (e.target === backdrop) closeModal();
+    if (e.target === backdrop) {
+      closeModal();
+      onCancel?.();
+    }
   });
 
   document.body.appendChild(backdrop);
   form.querySelector("input, select")?.focus();
 }
 
-function showLoginModal(writers) {
-  showModal(
-    "Writing as…",
-    [
-      {
-        label: "Writer",
-        id: "auth-writer",
-        name: "slug",
-        type: "select",
-        options: writers.map((w) => ({ value: w.slug, label: w.displayName })),
+/**
+ * Opens the writer + PIN login modal.
+ * @returns {Promise<object|null>} writer on success, null if cancelled
+ */
+export function promptLogin() {
+  return new Promise(async (resolve) => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    let writers;
+    try {
+      ({ writers } = await apiGet("/auth/writers"));
+    } catch (err) {
+      alert(err.data?.error || err.message || "Could not load writers");
+      finish(null);
+      return;
+    }
+
+    showModal(
+      "Writing as…",
+      [
+        {
+          label: "Writer",
+          id: "auth-writer",
+          name: "slug",
+          type: "select",
+          options: writers.map((w) => ({ value: w.slug, label: w.displayName })),
+        },
+        {
+          label: "PIN",
+          id: "auth-pin",
+          name: "pin",
+          type: "password",
+          autocomplete: "current-password",
+        },
+      ],
+      async (values, errorEl) => {
+        try {
+          const data = await apiPost("/auth/login", {
+            slug: values.slug,
+            pin: values.pin,
+          });
+          currentWriter = data.writer;
+          notifyAuthChange();
+          finish(currentWriter);
+        } catch (err) {
+          errorEl.textContent = err.data?.error || "Login failed";
+          errorEl.classList.remove("hidden");
+          throw err;
+        }
       },
-      {
-        label: "PIN",
-        id: "auth-pin",
-        name: "pin",
-        type: "password",
-        autocomplete: "current-password",
-      },
-    ],
-    async (values, errorEl) => {
-      try {
-        const data = await apiPost("/auth/login", {
-          slug: values.slug,
-          pin: values.pin,
-        });
-        currentWriter = data.writer;
-        notifyAuthChange();
-        renderAuthControl(document.getElementById("auth-control"));
-      } catch (err) {
-        errorEl.textContent = err.data?.error || "Login failed";
-        errorEl.classList.remove("hidden");
-        throw err;
-      }
-    },
-  );
+      { onCancel: () => finish(null) },
+    );
+  });
 }
 
-function showChangePinModal() {
-  showModal(
-    "Change PIN",
-    [
-      {
-        label: "Current PIN",
-        id: "current-pin",
-        name: "currentPin",
-        type: "password",
-        autocomplete: "current-password",
-      },
-      {
-        label: "New PIN (min 4 characters)",
-        id: "new-pin",
-        name: "newPin",
-        type: "password",
-        autocomplete: "new-password",
-      },
-    ],
-    async (values) => {
-      await apiPost("/auth/change-pin", {
-        currentPin: values.currentPin,
-        newPin: values.newPin,
-      });
-    },
-  );
-}
-
-export async function initAuth() {
+/** Clears the writer session cookie and local state. */
+export async function logoutWriter() {
   try {
-    const data = await apiGet("/auth/me");
-    currentWriter = data.writer;
+    await apiPost("/auth/logout", {});
   } catch {
-    currentWriter = null;
+    // Still clear local state if the request fails
   }
+  currentWriter = null;
   notifyAuthChange();
 }
 
-export function renderAuthControl(container) {
-  if (!container) return;
-  container.innerHTML = "";
+/**
+ * Account sheet opened via long-press on the Edit FAB.
+ * @returns {Promise<"logout"|"change"|"cancel">}
+ */
+export function showAccountModal() {
+  return new Promise((resolve) => {
+    closeModal();
+    const writer = currentWriter;
+    const statusText = writer
+      ? `Signed in as ${writer.displayName}`
+      : "Not logged in";
 
-  const label = document.createElement("span");
-  label.className = "auth-label";
-  label.textContent = "Writing as: ";
+    const backdrop = document.createElement("div");
+    backdrop.className = "auth-modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="auth-modal auth-account-modal" role="dialog" aria-modal="true">
+        <h3>Writer</h3>
+        <p class="auth-confirm-message">${statusText}</p>
+        <div class="auth-modal-actions auth-account-actions">
+          <button type="button" class="auth-btn auth-btn-logout" ${writer ? "" : "disabled"}>Log Out</button>
+          <button type="button" class="auth-btn auth-btn-change-writer">Change Writer</button>
+          <button type="button" class="auth-btn auth-btn-ghost">Cancel</button>
+        </div>
+      </div>
+    `;
 
-  if (currentWriter) {
-    const name = document.createElement("span");
-    name.className = "auth-writer-name";
-    name.textContent = currentWriter.displayName;
+    const finish = (action) => {
+      closeModal();
+      resolve(action);
+    };
 
-    const logoutBtn = document.createElement("button");
-    logoutBtn.type = "button";
-    logoutBtn.className = "auth-btn";
-    logoutBtn.textContent = "Log out";
-    logoutBtn.addEventListener("click", async () => {
-      await apiPost("/auth/logout", {});
-      currentWriter = null;
+    backdrop.querySelector(".auth-btn-logout").addEventListener("click", () => {
+      if (!writer) return;
+      finish("logout");
+    });
+    backdrop.querySelector(".auth-btn-change-writer").addEventListener("click", () => {
+      finish("change");
+    });
+    backdrop.querySelector(".auth-btn-ghost").addEventListener("click", () => {
+      finish("cancel");
+    });
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) finish("cancel");
+    });
+
+    document.body.appendChild(backdrop);
+    backdrop.querySelector(".auth-btn-change-writer")?.focus();
+  });
+}
+
+/**
+ * Confirm dialog with equal-width actions.
+ * Destructive action is the filled "Cancel" (discard); "Keep Editing" is backgroundless.
+ * @returns {Promise<boolean>} true if user chose to discard (Cancel), false to keep editing
+ */
+export function showDiscardConfirmModal() {
+  return new Promise((resolve) => {
+    closeModal();
+    const backdrop = document.createElement("div");
+    backdrop.className = "auth-modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="auth-modal auth-confirm-modal" role="dialog" aria-modal="true">
+        <h3>Discard changes?</h3>
+        <p class="auth-confirm-message">
+          All unsaved changes will be lost.
+        </p>
+        <div class="auth-modal-actions auth-confirm-actions">
+          <button type="button" class="auth-btn auth-btn-confirm-discard">Cancel</button>
+          <button type="button" class="auth-btn auth-btn-ghost">Keep Editing</button>
+        </div>
+      </div>
+    `;
+
+    const finish = (discard) => {
+      closeModal();
+      resolve(discard);
+    };
+
+    backdrop.querySelector(".auth-btn-confirm-discard").addEventListener("click", () => {
+      finish(true);
+    });
+    backdrop.querySelector(".auth-btn-ghost").addEventListener("click", () => {
+      finish(false);
+    });
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) finish(false);
+    });
+
+    document.body.appendChild(backdrop);
+    backdrop.querySelector(".auth-btn-ghost")?.focus();
+  });
+}
+
+let authReady = null;
+
+/** Restores the cookie session once per page load. Safe to call multiple times. */
+export function initAuth() {
+  if (!authReady) {
+    authReady = (async () => {
+      try {
+        const data = await apiGet("/auth/me");
+        currentWriter = data.writer;
+      } catch {
+        currentWriter = null;
+      }
       notifyAuthChange();
-      renderAuthControl(container);
-    });
-
-    const pinBtn = document.createElement("button");
-    pinBtn.type = "button";
-    pinBtn.className = "auth-btn edit-only";
-    pinBtn.textContent = "Change PIN";
-    pinBtn.addEventListener("click", showChangePinModal);
-
-    container.append(label, name, logoutBtn, pinBtn);
-  } else {
-    const guest = document.createElement("span");
-    guest.textContent = "Guest";
-
-    const loginBtn = document.createElement("button");
-    loginBtn.type = "button";
-    loginBtn.className = "auth-btn";
-    loginBtn.textContent = "Log in";
-    loginBtn.addEventListener("click", async () => {
-      const { writers } = await apiGet("/auth/writers");
-      showLoginModal(writers);
-    });
-
-    container.append(label, guest, loginBtn);
+      return currentWriter;
+    })();
   }
+  return authReady;
 }

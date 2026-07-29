@@ -50,6 +50,7 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
         writerId: b.writerId,
         body: b.body,
         sortRank: b.sortRank,
+        writerCssClass: b.writerCssClass,
       })),
     };
 
@@ -57,13 +58,6 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
       if (e.target !== container) return;
       insertOwnBlockAtEnd(container, writer);
     };
-
-    const saveBtn = document.createElement("button");
-    saveBtn.type = "button";
-    saveBtn.className = "save-blocks-btn edit-only";
-    saveBtn.textContent = "Save";
-    saveBtn.addEventListener("click", () => saveEntryBlocks(container, entry));
-    container.appendChild(saveBtn);
   } else {
     container.onclick = null;
     delete container._editBase;
@@ -320,12 +314,7 @@ function insertOwnBlockAtEnd(container, writer) {
   span.contentEditable = "true";
   span.textContent = "";
   wireOwnEditable(span);
-  const saveBtn = container.querySelector(".save-blocks-btn");
-  if (saveBtn) {
-    container.insertBefore(span, saveBtn);
-  } else {
-    container.appendChild(span);
-  }
+  container.appendChild(span);
   focusBlockCaret(span, false);
 }
 
@@ -595,9 +584,73 @@ function mergeBlocks(base, local, remote, writerId) {
 
 const MAX_CONFLICT_RETRIES = 5;
 
+function voiceClassFromEl(el) {
+  for (const cls of el.classList) {
+    if (cls.startsWith("voice-")) return cls;
+  }
+  return "";
+}
+
+/** Snapshot entry blocks from the DOM for re-render (includes voice CSS class). */
+function snapshotBlocksFromDom(container) {
+  const blocks = [];
+  for (const node of container.children) {
+    if (!(node instanceof HTMLElement) || !node.classList.contains("entry-block")) {
+      continue;
+    }
+    blocks.push({
+      id: node.dataset.blockId || undefined,
+      writerId: node.dataset.writerId,
+      body: node.textContent ?? "",
+      sortRank: node.dataset.sortRank,
+      writerCssClass: voiceClassFromEl(node),
+    });
+  }
+  return blocks;
+}
+
+function entryFromContainer(container) {
+  return {
+    id: container.dataset.entryId,
+    version: Number(container.dataset.version || 1),
+    blocks: snapshotBlocksFromDom(container),
+  };
+}
+
+/**
+ * Re-render every entry container under root as editable or read-only,
+ * preserving current DOM text when switching modes.
+ */
+export function setAllEntriesEditable(root = document, editable = false) {
+  root.querySelectorAll(".entry-blocks[data-entry-id]").forEach((container) => {
+    renderEntryBlocks(container, entryFromContainer(container), { editable });
+  });
+}
+
+/** Restore each editable container from its `_editBase` snapshot (read-only). */
+export function discardAllEntryBlocks(root = document) {
+  root.querySelectorAll(".entry-blocks[data-entry-id]").forEach((container) => {
+    const base = container._editBase;
+    if (!base) {
+      renderEntryBlocks(container, entryFromContainer(container), { editable: false });
+      return;
+    }
+    renderEntryBlocks(
+      container,
+      {
+        id: container.dataset.entryId,
+        version: base.version,
+        blocks: base.blocks,
+      },
+      { editable: false },
+    );
+  });
+}
+
+/** @returns {Promise<boolean>} true if saved successfully */
 export async function saveEntryBlocks(container, entry) {
   const writer = getCurrentWriter();
-  if (!writer) return;
+  if (!writer) return false;
 
   const local = gatherBlocksFromDom(container);
   let version = Number(container.dataset.version || entry.version);
@@ -611,7 +664,7 @@ export async function saveEntryBlocks(container, entry) {
       });
       container.dataset.version = String(data.entry.version);
       renderEntryBlocks(container, data.entry, { editable: true });
-      return;
+      return true;
     } catch (err) {
       if (err.status === 409 && err.data?.entry && attempt < MAX_CONFLICT_RETRIES) {
         const remoteEntry = err.data.entry;
@@ -622,11 +675,32 @@ export async function saveEntryBlocks(container, entry) {
         continue;
       }
       alert(err.data?.error || err.message || "Save failed");
-      return;
+      return false;
     }
   }
 
   alert("Save failed: too many concurrent edits. Try again.");
+  return false;
+}
+
+/**
+ * Save every editable entry container under root, sequentially.
+ * @returns {Promise<boolean>} true if all saves succeeded
+ */
+export async function saveAllEntryBlocks(root = document) {
+  const containers = [...root.querySelectorAll(".entry-blocks[data-entry-id]")].filter(
+    (el) => el._editBase,
+  );
+
+  for (const container of containers) {
+    const entry = {
+      id: container.dataset.entryId,
+      version: Number(container.dataset.version || 1),
+    };
+    const ok = await saveEntryBlocks(container, entry);
+    if (!ok) return false;
+  }
+  return true;
 }
 
 export function applyFormatToBlocks(root) {
