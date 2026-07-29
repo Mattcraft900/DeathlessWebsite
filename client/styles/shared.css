@@ -450,6 +450,15 @@ hr {
   white-space: pre-wrap;
 }
 
+.entry-para-break {
+  display: block;
+  margin-top: 1em;
+  height: 0;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+}
+
 .entry-block[contenteditable="true"]:not([data-empty="true"]) {
   outline: 1px dashed var(--secondary2-color);
   outline-offset: 2px;

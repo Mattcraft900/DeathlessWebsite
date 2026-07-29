@@ -22,6 +22,7 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
     span.dataset.blockId = block.id;
     span.dataset.writerId = block.writerId;
     span.dataset.sortRank = block.sortRank;
+    setStartsParagraph(span, Boolean(block.startsParagraph));
     span.textContent = block.body;
 
     const canEdit =
@@ -42,6 +43,8 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
     container.appendChild(span);
   }
 
+  refreshBlockSeparators(container);
+
   if (editable && writer) {
     container._editBase = {
       version: entry.version,
@@ -49,6 +52,7 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
         id: b.id,
         writerId: b.writerId,
         body: b.body,
+        startsParagraph: Boolean(b.startsParagraph),
         sortRank: b.sortRank,
         writerCssClass: b.writerCssClass,
       })),
@@ -81,9 +85,69 @@ function isEntryBlock(el) {
   return el instanceof HTMLElement && el.classList.contains("entry-block");
 }
 
+function readStartsParagraph(el) {
+  return el?.dataset?.startsParagraph === "true";
+}
+
+function setStartsParagraph(el, value) {
+  if (value) el.dataset.startsParagraph = "true";
+  else delete el.dataset.startsParagraph;
+}
+
+function createParaBreak() {
+  const el = document.createElement("span");
+  el.className = "entry-para-break";
+  el.setAttribute("aria-hidden", "true");
+  return el;
+}
+
+/** Rebuild space / paragraph separators between entry-block children. */
+function refreshBlockSeparators(container) {
+  if (!container) return;
+  const blocks = [...container.children].filter(isEntryBlock);
+  while (container.firstChild) container.removeChild(container.firstChild);
+  for (let i = 0; i < blocks.length; i++) {
+    if (i > 0) {
+      if (readStartsParagraph(blocks[i])) {
+        container.appendChild(createParaBreak());
+      } else {
+        container.appendChild(document.createTextNode(" "));
+      }
+    }
+    container.appendChild(blocks[i]);
+  }
+}
+
 function blockSibling(span, direction) {
-  const el = direction === "prev" ? span.previousElementSibling : span.nextElementSibling;
+  let el = direction === "prev" ? span.previousElementSibling : span.nextElementSibling;
+  while (el && !isEntryBlock(el)) {
+    el = direction === "prev" ? el.previousElementSibling : el.nextElementSibling;
+  }
   return isEntryBlock(el) ? el : null;
+}
+
+function entryBlocksInOrder(container) {
+  return [...container.children].filter(isEntryBlock);
+}
+
+/** Paragraph role of a block within its entry: only | first | last | middle */
+function paragraphRole(span) {
+  const container = span.parentElement;
+  if (!container) return "only";
+  const blocks = entryBlocksInOrder(container);
+  const idx = blocks.indexOf(span);
+  if (idx < 0) return "only";
+
+  let start = idx;
+  while (start > 0 && !readStartsParagraph(blocks[start])) start -= 1;
+
+  let end = idx;
+  while (end + 1 < blocks.length && !readStartsParagraph(blocks[end + 1])) end += 1;
+
+  if (start === end) return "only";
+  if (idx === start) return "first";
+  if (idx === end) return "last";
+  return "middle";
 }
 
 function isOwnEditableBlock(el, writer) {
@@ -116,6 +180,7 @@ function discardIfEmpty(span) {
     return;
   }
 
+  const container = span.parentElement;
   const prev = blockSibling(span, "prev");
   const next = blockSibling(span, "next");
   if (
@@ -127,15 +192,100 @@ function discardIfEmpty(span) {
     prev.textContent = `${prev.textContent ?? ""}${next.textContent ?? ""}`;
     next.remove();
     span.remove();
+    refreshBlockSeparators(container);
     return;
   }
 
+  const wasFirst = !prev;
   span.remove();
+  if (wasFirst && next) {
+    setStartsParagraph(next, false);
+  }
+  refreshBlockSeparators(container);
+}
+
+function getCaretOffsetInBlock(span) {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return 0;
+  const range = selection.getRangeAt(0);
+  if (!span.contains(range.startContainer)) return 0;
+
+  const pre = range.cloneRange();
+  pre.selectNodeContents(span);
+  pre.setEnd(range.startContainer, range.startOffset);
+  return pre.toString().length;
+}
+
+function handleEnterInOwnBlock(span, writer, e) {
+  const role = paragraphRole(span);
+  if (role === "middle") {
+    e.preventDefault();
+    return;
+  }
+
+  const text = span.textContent ?? "";
+  const offset = getCaretOffsetInBlock(span);
+  const container = span.parentElement;
+
+  // First-but-not-last: only allow inserting a new paragraph above at caret 0.
+  if (role === "first") {
+    e.preventDefault();
+    if (offset !== 0) return;
+
+    const prev = blockSibling(span, "prev");
+    const formatMode = getFormatMode();
+    const empty = document.createElement("span");
+    empty.className = `entry-block ${writer.cssClass} ${formatMode}`;
+    empty.dataset.writerId = writer.id;
+    empty.dataset.sortRank = generateKeyBetween(
+      prev?.dataset.sortRank ?? null,
+      span.dataset.sortRank ?? null,
+    );
+    empty.contentEditable = "true";
+    empty.textContent = "";
+    setStartsParagraph(empty, readStartsParagraph(span));
+    setStartsParagraph(span, true);
+    wireOwnEditable(empty);
+    span.before(empty);
+    refreshBlockSeparators(container);
+    focusBlockCaret(empty, false);
+    return;
+  }
+
+  // Last or only: split at caret into current + new paragraph block.
+  e.preventDefault();
+  const before = text.slice(0, offset);
+  const after = text.slice(offset);
+  const next = blockSibling(span, "next");
+  span.textContent = before;
+  syncEmptyAttr(span);
+
+  const formatMode = getFormatMode();
+  const neu = document.createElement("span");
+  neu.className = `entry-block ${writer.cssClass} ${formatMode}`;
+  neu.dataset.writerId = writer.id;
+  neu.dataset.sortRank = generateKeyBetween(
+    span.dataset.sortRank ?? null,
+    next?.dataset.sortRank ?? null,
+  );
+  neu.contentEditable = "true";
+  neu.textContent = after;
+  setStartsParagraph(neu, true);
+  wireOwnEditable(neu);
+  span.after(neu);
+  refreshBlockSeparators(container);
+  focusBlockCaret(neu, false);
 }
 
 function wireOwnEditable(span) {
   syncEmptyAttr(span);
   span.addEventListener("input", () => syncEmptyAttr(span));
+  span.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+    const writer = getCurrentWriter();
+    if (!writer || span.dataset.writerId !== writer.id) return;
+    handleEnterInOwnBlock(span, writer, e);
+  });
   span.addEventListener("blur", () => {
     setTimeout(() => discardIfEmpty(span), 0);
   });
@@ -249,8 +399,10 @@ function insertOwnBlockAfter(afterSpan, writer) {
   );
   span.contentEditable = "true";
   span.textContent = "";
+  setStartsParagraph(span, false);
   wireOwnEditable(span);
   afterSpan.after(span);
+  refreshBlockSeparators(afterSpan.parentElement);
   focusBlockCaret(span, false);
 }
 
@@ -271,8 +423,10 @@ function insertOwnBlockBefore(beforeSpan, writer) {
   );
   span.contentEditable = "true";
   span.textContent = "";
+  setStartsParagraph(span, false);
   wireOwnEditable(span);
   beforeSpan.before(span);
+  refreshBlockSeparators(beforeSpan.parentElement);
   focusBlockCaret(span, false);
 }
 
@@ -285,6 +439,7 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
   const next = blockSibling(foreignSpan, "next");
   const baseRank = foreignSpan.dataset.sortRank ?? null;
   const afterRank = next?.dataset.sortRank ?? null;
+  const container = foreignSpan.parentElement;
 
   // Edge click next to an existing own block → edit that block, don't insert again.
   if (!before.trim()) {
@@ -328,6 +483,7 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
   own.dataset.sortRank = midRank;
   own.contentEditable = "true";
   own.textContent = "";
+  setStartsParagraph(own, false);
   wireOwnEditable(own);
 
   const continuation = document.createElement("span");
@@ -337,6 +493,7 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
   continuation.dataset.splitContinuation = "1";
   continuation.contentEditable = "false";
   continuation.textContent = after;
+  setStartsParagraph(continuation, false);
   continuation.title = "Click where you want to insert your commentary";
   continuation.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -344,11 +501,13 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
   });
 
   foreignSpan.after(own, continuation);
+  refreshBlockSeparators(container);
   focusBlockCaret(own, false);
 }
 
 function insertOwnBlockAtEnd(container, writer) {
-  const last = container.querySelector(".entry-block:last-of-type");
+  const blocks = entryBlocksInOrder(container);
+  const last = blocks[blocks.length - 1] ?? null;
   if (isOwnEditableBlock(last, writer)) {
     focusBlockCaret(last, true);
     return;
@@ -361,8 +520,10 @@ function insertOwnBlockAtEnd(container, writer) {
   span.dataset.sortRank = generateKeyBetween(last?.dataset.sortRank ?? null, null);
   span.contentEditable = "true";
   span.textContent = "";
+  setStartsParagraph(span, blocks.length > 0);
   wireOwnEditable(span);
   container.appendChild(span);
+  refreshBlockSeparators(container);
   focusBlockCaret(span, false);
 }
 
@@ -375,15 +536,7 @@ function gatherBlocksFromDom(container) {
 
   for (const node of container.childNodes) {
     if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent?.trim();
-      if (!text) continue;
-      const sortRank = generateKeyBetween(prevRank, null);
-      blocks.push({
-        writerId: writer.id,
-        body: text,
-        sortRank,
-      });
-      prevRank = sortRank;
+      // Inter-block space separators — ignore
       continue;
     }
 
@@ -391,8 +544,8 @@ function gatherBlocksFromDom(container) {
       continue;
     }
 
-    const body = node.textContent ?? "";
-    if (!body.trim() && !node.dataset.blockId) continue;
+    const body = (node.textContent ?? "").trim();
+    if (!body && !node.dataset.blockId) continue;
 
     const sortRank =
       node.dataset.sortRank || generateKeyBetween(prevRank, null);
@@ -400,6 +553,7 @@ function gatherBlocksFromDom(container) {
       id: node.dataset.blockId || undefined,
       writerId: node.dataset.writerId,
       body,
+      startsParagraph: readStartsParagraph(node),
       sortRank,
     });
     prevRank = sortRank;
@@ -412,9 +566,16 @@ function mergeAdjacentSameWriter(blocks) {
   const merged = [];
   for (const block of blocks) {
     const prev = merged[merged.length - 1];
-    // Only fold brand-new adjacent runs of the same voice (no persisted ids yet)
-    if (prev && prev.writerId === block.writerId && !prev.id && !block.id) {
-      prev.body = `${prev.body}${block.body}`;
+    // Only fold brand-new adjacent runs of the same voice (no persisted ids yet),
+    // and never across a paragraph boundary.
+    if (
+      prev &&
+      prev.writerId === block.writerId &&
+      !prev.id &&
+      !block.id &&
+      !block.startsParagraph
+    ) {
+      prev.body = `${prev.body}${block.body}`.trim();
       prev.sortRank = block.sortRank;
     } else {
       merged.push({ ...block });
@@ -427,6 +588,7 @@ function clonePayloadBlock(b) {
   const out = {
     writerId: b.writerId,
     body: b.body,
+    startsParagraph: Boolean(b.startsParagraph),
     sortRank: b.sortRank,
   };
   if (b.id) out.id = b.id;
@@ -470,11 +632,12 @@ function foreignRemainder(baseBody, keptBody) {
 /** True if the split remainder already exists after the shortened prefix on remote. */
 function hasContinuationAfter(result, afterId, remainder, foreignWriterId) {
   if (!remainder) return false;
+  const trimmed = remainder.trim();
   const idx = result.findIndex((r) => r.id === afterId);
   if (idx < 0) return false;
   for (let j = idx + 1; j < result.length; j++) {
     const b = result[j];
-    if (b.writerId === foreignWriterId && b.body === remainder) return true;
+    if (b.writerId === foreignWriterId && b.body.trim() === trimmed) return true;
   }
   return false;
 }
@@ -507,10 +670,14 @@ function mergeBlocks(base, local, remote, writerId) {
     if (!target) continue;
     if (target.writerId === writerId) {
       target.body = b.body;
+      target.startsParagraph = Boolean(b.startsParagraph);
     } else if (isAdmin) {
       const baseBlock = baseById.get(b.id);
       if (baseBlock && b.body !== baseBlock.body) {
         target.body = b.body;
+      }
+      if (baseBlock && Boolean(b.startsParagraph) !== Boolean(baseBlock.startsParagraph)) {
+        target.startsParagraph = Boolean(b.startsParagraph);
       }
     }
   }
@@ -650,6 +817,7 @@ function snapshotBlocksFromDom(container) {
       id: node.dataset.blockId || undefined,
       writerId: node.dataset.writerId,
       body: node.textContent ?? "",
+      startsParagraph: readStartsParagraph(node),
       sortRank: node.dataset.sortRank,
       writerCssClass: voiceClassFromEl(node),
     });

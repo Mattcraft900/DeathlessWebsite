@@ -91,6 +91,7 @@ travelogueRouter.get("/sessions", async (req, res, next) => {
             entryId: blocks.entryId,
             writerId: blocks.writerId,
             body: blocks.body,
+            startsParagraph: blocks.startsParagraph,
             sortRank: blocks.sortRank,
             writerSlug: writers.slug,
             writerCssClass: writers.cssClass,

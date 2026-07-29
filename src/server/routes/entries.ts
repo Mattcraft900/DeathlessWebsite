@@ -11,6 +11,19 @@ type IncomingBlock = {
   writerId: string;
   sortRank: string;
   body: string;
+  startsParagraph?: boolean;
+};
+
+const blockSelect = {
+  id: blocks.id,
+  entryId: blocks.entryId,
+  writerId: blocks.writerId,
+  body: blocks.body,
+  startsParagraph: blocks.startsParagraph,
+  sortRank: blocks.sortRank,
+  writerSlug: writers.slug,
+  writerCssClass: writers.cssClass,
+  writerDisplayName: writers.displayName,
 };
 
 entriesRouter.get("/:id", async (req, res, next) => {
@@ -22,16 +35,7 @@ entriesRouter.get("/:id", async (req, res, next) => {
       return;
     }
     const entryBlocks = await db
-      .select({
-        id: blocks.id,
-        entryId: blocks.entryId,
-        writerId: blocks.writerId,
-        body: blocks.body,
-        sortRank: blocks.sortRank,
-        writerSlug: writers.slug,
-        writerCssClass: writers.cssClass,
-        writerDisplayName: writers.displayName,
-      })
+      .select(blockSelect)
       .from(blocks)
       .innerJoin(writers, eq(blocks.writerId, writers.id))
       .where(eq(blocks.entryId, entry.id))
@@ -65,16 +69,7 @@ entriesRouter.put("/:id/blocks", requireWriter, async (req: AuthedRequest, res, 
 
     if (entry.version !== version) {
       const freshBlocks = await db
-        .select({
-          id: blocks.id,
-          entryId: blocks.entryId,
-          writerId: blocks.writerId,
-          body: blocks.body,
-          sortRank: blocks.sortRank,
-          writerSlug: writers.slug,
-          writerCssClass: writers.cssClass,
-          writerDisplayName: writers.displayName,
-        })
+        .select(blockSelect)
         .from(blocks)
         .innerJoin(writers, eq(blocks.writerId, writers.id))
         .where(eq(blocks.entryId, entry.id))
@@ -107,7 +102,7 @@ entriesRouter.put("/:id/blocks", requireWriter, async (req: AuthedRequest, res, 
       else return false;
       if (!remainder) return true;
       return incoming.some(
-        (b) => !b.id && b.writerId === prev.writerId && b.body === remainder,
+        (b) => !b.id && b.writerId === prev.writerId && b.body.trim() === remainder.trim(),
       );
     }
 
@@ -166,13 +161,18 @@ entriesRouter.put("/:id/blocks", requireWriter, async (req: AuthedRequest, res, 
       }
 
       for (const block of incoming) {
+        const body = block.body.trim();
+        const startsParagraph = Boolean(block.startsParagraph);
         if (block.id && existingById.has(block.id)) {
+          const prev = existingById.get(block.id)!;
+          const canEditMeta = isAdmin || prev.writerId === writer.id;
           await tx
             .update(blocks)
             .set({
-              body: block.body,
+              body,
               sortRank: block.sortRank,
-              writerId: isAdmin ? block.writerId : existingById.get(block.id)!.writerId,
+              startsParagraph: canEditMeta ? startsParagraph : prev.startsParagraph,
+              writerId: isAdmin ? block.writerId : prev.writerId,
               updatedAt: new Date(),
             })
             .where(eq(blocks.id, block.id));
@@ -180,7 +180,8 @@ entriesRouter.put("/:id/blocks", requireWriter, async (req: AuthedRequest, res, 
           await tx.insert(blocks).values({
             entryId: entry.id,
             writerId: block.writerId,
-            body: block.body,
+            body,
+            startsParagraph,
             sortRank: block.sortRank,
           });
         }
@@ -195,16 +196,7 @@ entriesRouter.put("/:id/blocks", requireWriter, async (req: AuthedRequest, res, 
     const [updated] = await db.select().from(entries).where(eq(entries.id, entry.id)).limit(1);
     if (!updated || updated.version !== version + 1) {
       const freshBlocks = await db
-        .select({
-          id: blocks.id,
-          entryId: blocks.entryId,
-          writerId: blocks.writerId,
-          body: blocks.body,
-          sortRank: blocks.sortRank,
-          writerSlug: writers.slug,
-          writerCssClass: writers.cssClass,
-          writerDisplayName: writers.displayName,
-        })
+        .select(blockSelect)
         .from(blocks)
         .innerJoin(writers, eq(blocks.writerId, writers.id))
         .where(eq(blocks.entryId, entry.id))
@@ -217,16 +209,7 @@ entriesRouter.put("/:id/blocks", requireWriter, async (req: AuthedRequest, res, 
     }
 
     const savedBlocks = await db
-      .select({
-        id: blocks.id,
-        entryId: blocks.entryId,
-        writerId: blocks.writerId,
-        body: blocks.body,
-        sortRank: blocks.sortRank,
-        writerSlug: writers.slug,
-        writerCssClass: writers.cssClass,
-        writerDisplayName: writers.displayName,
-      })
+      .select(blockSelect)
       .from(blocks)
       .innerJoin(writers, eq(blocks.writerId, writers.id))
       .where(eq(blocks.entryId, entry.id))

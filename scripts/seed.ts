@@ -247,6 +247,28 @@ function parseVoiceBlocks(text: string): { writerSlug: "lucy" | "nemah"; body: s
   return merged.filter((p) => p.body.length > 0);
 }
 
+/** One seed array element = one paragraph; first block of each later paragraph starts a break. */
+function blocksFromParagraphs(
+  paragraphs: string[],
+): { writerSlug: "lucy" | "nemah"; body: string; startsParagraph: boolean }[] {
+  const result: { writerSlug: "lucy" | "nemah"; body: string; startsParagraph: boolean }[] = [];
+  let isFirstParagraph = true;
+  for (const paragraph of paragraphs) {
+    if (!paragraph.trim()) continue;
+    const parts = parseVoiceBlocks(paragraph);
+    if (parts.length === 0) continue;
+    for (let i = 0; i < parts.length; i++) {
+      result.push({
+        writerSlug: parts[i].writerSlug,
+        body: parts[i].body,
+        startsParagraph: i === 0 && !isFirstParagraph,
+      });
+    }
+    isFirstParagraph = false;
+  }
+  return result;
+}
+
 function rankSequence(count: number, after: string | null = null): string[] {
   const ranks: string[] = [];
   let prev = after;
@@ -364,30 +386,28 @@ async function seed() {
 
     characterIds.set(slug, row.id);
 
-    const joinedDesc = c.description.join("\n\n").trim();
-    if (joinedDesc) {
-      const voiceBlocks = parseVoiceBlocks(joinedDesc);
-      if (voiceBlocks.length > 0) {
-        const [bioEntry] = await db
-          .insert(entries)
-          .values({
-            type: "character_bio",
-            characterId: row.id,
-            sortRank: generateKeyBetween(null, null),
-            showHeading: false,
-          })
-          .returning({ id: entries.id });
+    const voiceBlocks = blocksFromParagraphs(c.description);
+    if (voiceBlocks.length > 0) {
+      const [bioEntry] = await db
+        .insert(entries)
+        .values({
+          type: "character_bio",
+          characterId: row.id,
+          sortRank: generateKeyBetween(null, null),
+          showHeading: false,
+        })
+        .returning({ id: entries.id });
 
-        const blockRanks = rankSequence(voiceBlocks.length);
-        await db.insert(blocks).values(
-          voiceBlocks.map((b, idx) => ({
-            entryId: bioEntry.id,
-            writerId: b.writerSlug === "nemah" ? nemahId : lucyId,
-            body: b.body,
-            sortRank: blockRanks[idx],
-          })),
-        );
-      }
+      const blockRanks = rankSequence(voiceBlocks.length);
+      await db.insert(blocks).values(
+        voiceBlocks.map((b, idx) => ({
+          entryId: bioEntry.id,
+          writerId: b.writerSlug === "nemah" ? nemahId : lucyId,
+          body: b.body,
+          startsParagraph: b.startsParagraph,
+          sortRank: blockRanks[idx],
+        })),
+      );
     }
   }
 
@@ -440,8 +460,7 @@ async function seed() {
         })
         .returning({ id: entries.id });
 
-      const joinedText = item.text.join("\n\n").trim();
-      const voiceBlocks = parseVoiceBlocks(joinedText);
+      const voiceBlocks = blocksFromParagraphs(item.text);
       if (voiceBlocks.length > 0) {
         const blockRanks = rankSequence(voiceBlocks.length);
         await db.insert(blocks).values(
@@ -449,6 +468,7 @@ async function seed() {
             entryId: dateEntry.id,
             writerId: b.writerSlug === "nemah" ? nemahId : lucyId,
             body: b.body,
+            startsParagraph: b.startsParagraph,
             sortRank: blockRanks[idx],
           })),
         );

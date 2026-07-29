@@ -100,12 +100,12 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 
 - [x] Fix multiple-user concurrency issues
 - [x] Fix weird insert block position bugs
+- [ ] Standardize white space between voice blocks
 - [ ]
 
 ### Wanted for MVP
 
 - [x] Move the "Writing as" dropdown.
-- [ ] Standardize white space between voice blocks
 - [ ] Implement a route for players to change their PIN
 - [ ] Restore old site layouts
 - [ ] Test infinite scrolling/jump-to functions on the travelogue.
@@ -122,6 +122,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 - [ ] Rich-text/WYSIWYG editor while editing
     - [ ] Include undo/redo buttons (primarily for mobile)
 - [x] Persistent header(s)
+    - [ ] Sticky headings for travelogue session entries & character list categories
 - [ ] UX for adding new travelogue entries
 - [ ] UX for adding new characters
 - [ ] UX for players to update their own font & color (same place as reset PIN?)
@@ -129,16 +130,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 
 
 
-### Current task: "Writing as" move
+### Current task: Standardizing whitespace between blocks
 
 #### List items:
 
-I'd like to revamp the UX for the "Writing as..." selection.
-First, let's change up how the writer gets selected entirely.
-    - No more dropdown in the global header; instead, there will be a floating button in the corner of the screen (only on pages with entries, though) that has an Edit icon. This button leaves/returns based on scroll behavior, similar to the edit button in the Google Docs mobile app.
-    - When the button is clicked, it THEN opens a small modal in the middle of the screen prompting the user to select a writer & enter password.
-While in "Edit mode," (i.e. after entering a valid writer & password), the Edit button is replaced with a small, semi-persistent footer (again, affected by scroll behavior like Google Docs mobile app) containing two buttons: one that says "Save" and one that says "Cancel." 
-    - Pressing the Save button saves the changes to the database, exactly the same as the current Save behavior.
-    - Pressing the Cancel button will display a small modal with a brief confirmation message explaining that all unsaved changes will be lost (buttons on this modal are a sharp "Cancel" and backgroundless "Keep Editing", both given equal space). Hitting Cancel in the modal discards all changes made without touching the DB.
-    - Both routes (Save or Cancel [if followed through]) cause the user to leave "Edit mode". If possible/viable, I'd like for the user to not have to re-enter their writer/password as long as they stay on the same page, after both Save and Cancel (i.e. pressing the Edit button again on the same page takes them staight to Edit mode, no modal).
-Utilize mobile-first design principles while implementing all of these changes.

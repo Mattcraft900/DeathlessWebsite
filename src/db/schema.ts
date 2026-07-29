@@ -69,6 +69,7 @@ export const blocks = pgTable("blocks", {
     .notNull()
     .references(() => writers.id),
   body: text("body").notNull(),
+  startsParagraph: boolean("starts_paragraph").notNull().default(false),
   // COLLATE "C" in DB — fractional ranks must use byte order, not locale
   sortRank: text("sort_rank").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
