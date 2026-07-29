@@ -24,7 +24,6 @@ type CharacterSeed = {
   age: string;
   category: string;
   snippet: string;
-  img: string;
   description: string[];
   player?: string;
   level?: number;
@@ -51,7 +50,6 @@ const CHARACTER_DATA: CharacterSeed[] = [
     age: "20-ish",
     category: "party",
     snippet: "Level 6 Warlock of the Fiend",
-    img: "lucy.jpg",
     description: [
       "That's me! Yours truly. I don't have a last name. Or a birthday. <It was somewhere around September, 20 years ago from what I can guess> I guess that's because I grew up on the streets of New Haven with my brother. We didn't have parents, but we did fine for ourselves. We were happy. It was the only life I ever knew, at least until...",
       "",
@@ -70,7 +68,6 @@ const CHARACTER_DATA: CharacterSeed[] = [
     age: "14",
     category: "party",
     snippet: "Level 6 Necro-alchemist Artificer",
-    img: "nemah.jpg",
     description: [
       "Nemah is the best! She's so sweet, she's like a sister I never had. On the outside she looks real scary-like, what with her bein' a super tall Valcari lady with four arms and a mask that she always wears. Well, not always, but she wears it a lot. I still have to ask her about that, actually. Oh, and she's like, an albino (I think that's what she said)? <Yes.> Which means her skin is all pale and white when normally it should be like black or brown, I think. But she looks super cool though.",
       "<We wear the masks as a way to ward off evil spirits and as a sign of protection. We only take them off as a sign of respect or when in the company of those we trust.>",
@@ -92,7 +89,6 @@ const CHARACTER_DATA: CharacterSeed[] = [
     age: "376",
     category: "party",
     snippet: "Level 6 Investigator Rogue",
-    img: "luark.jpg",
     description: [
       "Okay, so I'm pretty sure my friend Pill has told me that there like, at least a couple of books that've been written about Luark already, so I might not need to say all that much here, but it wouldn't feel right if I left him out. And besides, maybe the books are wrong, so I'm gonna write about him anyway!",
       "Luark is a kindred with purple skin. He's from Desolaria, which is across the ocean, and they do a lot of things kinda differently there. But also Luark is just kinda different in general anyway because he's like three hundred and fifty years old, which is more than a hundred! <Yes, it's at least 3 one-hundreds> He's done basically everything before, like being a lawyer, a professor, an author, and a bunch of other stuff, but right now he's a detective, which he says he likes the most. So Luark is really smart, but in a different way than Nemah.",
@@ -112,7 +108,6 @@ const CHARACTER_DATA: CharacterSeed[] = [
     age: "27",
     category: "party",
     snippet: "Level 6 Gunslinger Ranger",
-    img: "enza.jpg",
     description: [
       "Enza is an ambystoman with blue skin, <Not as blue anymore.> and he's a little over three feet tall. He also black veins (which I learned recently is not normal) and is starting to go deaf and blind, which are both because of his sorrow. He also releases mist in the air sometimes; I think it's whenever he's stressed out. <Which is all the time.>",
       "Enza is from a town called Saint Dane, where he grew up on a farm. He really wants to make his parents proud and be a hero, but I can tell he's… afraid that he'll never do it, I guess. Even though he's probably the bravest one out of all of us, and we've tried to tell him, but he hasn't been havin' any of it, yet. I think it's got something to do with him workin' for the goblin mafia a little while back, because after he shot the Benedetti… leader guy, he ran away and never went back home, so until recently, he hadn't seen his family for 15 whole years. <There will be blood on their behalf.>",
@@ -131,7 +126,6 @@ const CHARACTER_DATA: CharacterSeed[] = [
     age: "11",
     category: "party",
     snippet: "Level 6 Bard/Cleric",
-    img: "chesco.jpg",
     description: [
       "Oh, Chesco.  <Oh indeed.>",
       "Chesco actually has a really long name but I can never remember even the first part of it. <Franchesco Giuseppe Benedetti III> We all just call him Chesco. He's a goblin a little over three feet tall who carries his banjo with him everywhere. Sometimes he plays it, and he's actually pretty dang good with it! I don't know why he doesn't play it more often. There's a lot of things I don't know about Chesco, actually; but for once, I don't think I'm the odd one out in that regard.",
@@ -155,7 +149,6 @@ const CHARACTER_DATA: CharacterSeed[] = [
     age: "25 (extremely young for a kindred)",
     category: "opc",
     snippet: "Old Black Train survivor and Luark's #1 fan",
-    img: "",
     description: [
       "Pill is so cute! I haven't actually talked to her all that much, but she's basically the little sister I never had. We're magic pen pals with each other. She's actually older than me because she's a kindred (dark-skinned though, not like Luark), but she's still like, really young in kindred years, so. It still counts.",
       "Oh and speaking of Luark, she's kind of super obsessed with him. Like maybe to an unhealthy degree. But I think she's harmless, herself. She's just so honest and openhearted. Maybe other people find it annoying, but I think it's wonderful.",
@@ -173,7 +166,6 @@ const CHARACTER_DATA: CharacterSeed[] = [
     age: "55 (looks much younger, though)",
     category: "opc",
     snippet: "Old Black Train survivor and Pathlighter",
-    img: "",
     description: [
       "Now, I need to make something clear. Telken is a good person. He's a religious man – called a Wayfinder <pathlighter> or something – but you can tell that he cares about people. He's a really good friend to Pill, so credit where credit is due.",
       "I'm still learning about what exactly it is that they do, but we met Telken and Pill in the big refugee camp outside Sundown City, but they have some kind of base set up in the Ruined Fields helping people.",
@@ -288,17 +280,19 @@ function copyImages() {
 
   const partySlugs = ["lucy", "nemah", "luark", "enza", "chesco"];
   for (const slug of partySlugs) {
-    const candidates = [
-      resolve(oldImagesDir, `${slug}.jpg`),
-      resolve(oldImagesDir, `${slug}-small.jpg`),
+    const pairs = [
+      { srcName: `${slug}.jpg`, destName: `${slug}-full.jpg` },
+      { srcName: `${slug}-small.jpg`, destName: `${slug}-small.jpg` },
     ];
-    const src = candidates.find((p) => existsSync(p));
-    const dest = resolve(charImages, `${slug}.jpg`);
-    if (src) {
-      copyFileSync(src, dest);
-      console.log(`Copied ${slug}.jpg`);
-    } else {
-      console.warn(`Missing image for ${slug} (looked in ${oldImagesDir})`);
+    for (const { srcName, destName } of pairs) {
+      const src = resolve(oldImagesDir, srcName);
+      const dest = resolve(charImages, destName);
+      if (existsSync(src)) {
+        copyFileSync(src, dest);
+        console.log(`Copied ${destName}`);
+      } else {
+        console.warn(`Missing ${srcName} (looked in ${oldImagesDir})`);
+      }
     }
   }
 
@@ -346,8 +340,6 @@ async function seed() {
     const c = CHARACTER_DATA[i];
     const slug = slugify(c.name);
     const writerSlug = PARTY_WRITER_SLUG[slug];
-    const imagePath =
-      c.img && c.img.trim() ? `/images/characters/${slug}.jpg` : null;
 
     const [row] = await db
       .insert(characters)
@@ -360,7 +352,6 @@ async function seed() {
         age: c.age || null,
         category: c.category,
         snippet: c.snippet || null,
-        imagePath,
         writerId: writerSlug ? writerIds.get(writerSlug) ?? null : null,
         level: c.level ?? null,
         classesJson: c.classes ? JSON.stringify(c.classes) : null,

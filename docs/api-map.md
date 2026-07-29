@@ -139,7 +139,6 @@ Base URL: `/api`. All endpoints return JSON unless noted. Session auth uses the 
       "age": "20-ish",
       "category": "party",
       "snippet": "Level 6 Warlock of the Fiend",
-      "imagePath": "/images/characters/lucy.jpg",
       "level": 6,
       "classes": [{ "class": "warlock", "level": 6, "subclass": "the fiend" }],
       "playerName": "Matthew"
@@ -173,7 +172,6 @@ Ordered by `sortRank`.
     "age": "20-ish",
     "category": "party",
     "snippet": "...",
-    "imagePath": "/images/characters/lucy.jpg",
     "level": 6,
     "classes": [],
     "playerName": "Matthew",

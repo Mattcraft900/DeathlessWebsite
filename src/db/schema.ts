@@ -34,7 +34,6 @@ export const characters = pgTable("characters", {
   age: text("age"),
   category: text("category").notNull().default("npc"),
   snippet: text("snippet"),
-  imagePath: text("image_path"),
   writerId: uuid("writer_id").references(() => writers.id),
   level: integer("level"),
   classesJson: text("classes_json"),

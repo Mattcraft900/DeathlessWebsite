@@ -1,6 +1,7 @@
 import { apiGet } from "./api.js";
 import { onAuthChange } from "./auth-ui.js";
 import { applyFormatToBlocks, renderEntryBlocks } from "./blocks.js";
+import { attachDetailPortrait } from "./character-images.js";
 
 function classesToString(classes) {
   if (!classes?.length) return "";
@@ -52,11 +53,7 @@ function renderCharacter(main, data) {
   document.getElementById("character-name").textContent = character.name;
 
   const img = document.getElementById("character-img");
-  if (character.imagePath) {
-    img.src = character.imagePath;
-    img.alt = `Image of ${character.name}`;
-    img.classList.remove("hidden");
-  }
+  attachDetailPortrait(img, character.slug, character.name);
 
   const stats = document.getElementById("stats-list");
   const addStat = (label, value) => {

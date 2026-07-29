@@ -1,20 +1,13 @@
 import { apiGet } from "./api.js";
+import { smallSrc } from "./character-images.js";
 
 function buildCharacterCard(character) {
   const slug = character.slug;
-  const hasImage = Boolean(character.imagePath);
-  let inner = `<a href="/characters/${slug}"><div class="character-card ${character.category}-character-card">`;
-
-  if (hasImage) {
-    inner += `<img src="${character.imagePath}" alt="Image of ${character.name}" class="character-img">`;
-  }
-
-  inner += `
+  return `<a href="/characters/${slug}"><div class="character-card ${character.category}-character-card">
+    <img src="${smallSrc(slug)}" alt="Image of ${character.name}" class="character-img" onerror="this.remove()">
     <h3 class="character-name">${character.name}</h3>
     <p class="character-snippet">${character.snippet || ""}</p>
   </div></a>`;
-
-  return inner;
 }
 
 function renderGallery(container, characters) {

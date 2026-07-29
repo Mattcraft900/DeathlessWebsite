@@ -15,6 +15,13 @@
       "when": 1753570000000,
       "tag": "0001_sort_rank_collate_c",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1753760000000,
+      "tag": "0002_drop_character_image_path",
+      "breakpoints": true
     }
   ]
 }

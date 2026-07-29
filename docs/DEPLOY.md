@@ -150,7 +150,7 @@ The app itself is not containerized in-repo; run it with `npm run dev` or deploy
 
 Character portraits and site images live in `client/public/images/`. The seed script copies them from the legacy WDD131 project when available. Ensure these exist before deploy:
 
-- `client/public/images/characters/{lucy,nemah,luark,enza,chesco}.jpg`
+- `client/public/images/characters/{lucy,nemah,luark,enza,chesco}-{full,small}.jpg`
 - `client/public/images/graveyard.jpg`
 - `client/public/images/deathless_symbol.png`
 
