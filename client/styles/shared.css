@@ -11,8 +11,19 @@
 
   --heading-font: Rye, "Times New Roman", serif;
   --paragraph-font: Montserrat, Helvetica, sans-serif;
+
+  --lucy-color: #551b09;
   --lucy-font: "Indie Flower", Helvetica, sans-serif;
+  --nemah-color: #5f163b;
   --nemah-font: Kalam, Helvetica, sans-serif;
+  --luark-color: #3d2b5a;
+  --luark-font: Kalam, Helvetica, sans-serif;
+  --enza-color: #1a4a6b;
+  --enza-font: Kalam, Helvetica, sans-serif;
+  --chesco-color: #2f5d2f;
+  --chesco-font: Kalam, Helvetica, sans-serif;
+  --dm-color: var(--paragraph-color-on-white);
+  --dm-font: var(--paragraph-font);
 
   --headline-color-on-white: var(--primary1-color);
   --headline-color-on-color: var(--offwhite);
@@ -474,37 +485,39 @@ hr {
 .voice-lucy.stylized,
 .entry-block.voice-lucy.stylized {
   font-family: var(--lucy-font);
+  color: var(--lucy-color);
 }
 
 .voice-nemah.stylized,
 .entry-block.voice-nemah.stylized {
   font-family: var(--nemah-font);
-  color: #5f163b;
+  color: var(--nemah-color);
 }
 
 .voice-luark.stylized,
 .entry-block.voice-luark.stylized {
   font-family: var(--nemah-font);
-  color: #3d2b5a;
+  color: var(--luark-color);
 }
 
 .voice-enza.stylized,
 .entry-block.voice-enza.stylized {
   font-family: var(--lucy-font);
-  color: #1a4a6b;
+  color: var(--enza-color);
 }
 
 .voice-chesco.stylized,
 .entry-block.voice-chesco.stylized {
   font-family: var(--nemah-font);
-  color: #2f5d2f;
+  color: var(--chesco-color);
 }
 
 .voice-dm.stylized,
 .entry-block.voice-dm.stylized {
   font-family: var(--heading-font);
-  color: var(--primary1-color);
+  color: var(--dm-color);
   font-size: 0.95em;
+  font-weight: 500;
 }
 
 .voice-lucy.simple,
