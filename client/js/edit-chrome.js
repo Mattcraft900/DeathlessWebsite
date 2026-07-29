@@ -126,12 +126,6 @@ function onEntryTap(e) {
   setChromeHidden(false);
 }
 
-function onEditFocusIn(e) {
-  if (!editMode) return;
-  if (!isEntryEditTarget(e.target)) return;
-  hideHeader();
-}
-
 function onEditFocusOut() {
   if (!editMode) return;
   // Let focus settle between blocks / into the footer before restoring
@@ -323,7 +317,6 @@ export function initEditChrome() {
   document.addEventListener("beforeinput", onEditTyping, true);
   document.addEventListener("input", onEditTyping, true);
   document.addEventListener("pointerdown", onEntryTap, true);
-  document.addEventListener("focusin", onEditFocusIn, true);
   document.addEventListener("focusout", onEditFocusOut, true);
 
   const vp = window.visualViewport;

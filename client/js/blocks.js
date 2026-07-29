@@ -54,12 +54,25 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
       })),
     };
 
+    // Ignore container "padding" clicks that started on a block (mobile Chrome
+    // often retargets the delayed click onto the container after focus/layout).
+    let pointerDownOnBlock = false;
+    container.onpointerdown = (e) => {
+      const t = e.target;
+      pointerDownOnBlock =
+        t instanceof Element && Boolean(t.closest(".entry-block"));
+    };
     container.onclick = (e) => {
       if (e.target !== container) return;
+      if (pointerDownOnBlock) {
+        pointerDownOnBlock = false;
+        return;
+      }
       insertOwnBlockAtEnd(container, writer);
     };
   } else {
     container.onclick = null;
+    container.onpointerdown = null;
     delete container._editBase;
   }
 }
@@ -153,38 +166,68 @@ function focusBlockCaret(span, atEnd) {
 }
 
 /**
- * Clicks on the edge of an own editable often hit-test onto the neighboring
- * foreign span; caretRangeFromPoint then snaps to the *far* end of that span.
- * Snap offset to the near edge when the pointer is hugging a sibling block.
+ * Nearest character offset in a span for a client point (works when
+ * caretRangeFromPoint is missing or unreliable, e.g. mobile Chrome).
  */
-function resolveClickOffset(foreignSpan, clientX, clientY) {
-  const text = foreignSpan.textContent ?? "";
-  let offset = text.length;
+function offsetFromPointInSpan(span, clientX, clientY) {
+  const textNode = [...span.childNodes].find((n) => n.nodeType === Node.TEXT_NODE);
+  if (!textNode) return 0;
+  const text = textNode.textContent ?? "";
+  const len = text.length;
+  if (!len) return 0;
 
-  if (document.caretRangeFromPoint) {
-    const range = document.caretRangeFromPoint(clientX, clientY);
-    if (range && foreignSpan.contains(range.startContainer)) {
-      if (range.startContainer.nodeType === Node.TEXT_NODE) {
-        offset = range.startOffset;
-      }
+  const range = document.createRange();
+  let lo = 0;
+  let hi = len;
+
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    range.setStart(textNode, 0);
+    range.setEnd(textNode, mid);
+    const rects = range.getClientRects();
+    const last = rects[rects.length - 1];
+    if (!last) {
+      hi = mid - 1;
+      continue;
     }
-  } else if (document.caretPositionFromPoint) {
-    const pos = document.caretPositionFromPoint(clientX, clientY);
-    if (pos && foreignSpan.contains(pos.offsetNode) && pos.offsetNode.nodeType === Node.TEXT_NODE) {
-      offset = pos.offset;
+    // Point is still before the end of [0, mid)
+    if (clientY < last.top - 1 || (clientY <= last.bottom + 1 && clientX < last.right)) {
+      hi = mid - 1;
+    } else {
+      lo = mid;
     }
   }
 
+  return lo;
+}
+
+/**
+ * Resolve where in a foreign block a click/tap landed.
+ * Uses geometry (not caretRangeFromPoint) because mobile Chrome often fails
+ * open and previously defaulted to the end of the block. Sibling-edge snap
+ * only applies in the gutter — never while the tap is inside this span.
+ */
+function resolveClickOffset(foreignSpan, clientX, clientY) {
+  const text = foreignSpan.textContent ?? "";
+  if (!text) return 0;
+
+  let offset = offsetFromPointInSpan(foreignSpan, clientX, clientY);
   offset = Math.max(0, Math.min(offset, text.length));
 
+  const foreignDist = distanceToRect(clientX, clientY, foreignSpan.getBoundingClientRect());
   const prev = blockSibling(foreignSpan, "prev");
   const next = blockSibling(foreignSpan, "next");
   const prevDist = prev ? distanceToRect(clientX, clientY, prev.getBoundingClientRect()) : Infinity;
   const nextDist = next ? distanceToRect(clientX, clientY, next.getBoundingClientRect()) : Infinity;
   const edgeSlop = 8;
 
-  if (nextDist <= edgeSlop && nextDist <= prevDist) offset = text.length;
-  else if (prevDist <= edgeSlop) offset = 0;
+  // Only snap when closer to a neighbor than to this block (gutter taps),
+  // not when tapping inside a short block that happens to sit near siblings.
+  if (nextDist <= edgeSlop && nextDist < foreignDist && nextDist <= prevDist) {
+    offset = text.length;
+  } else if (prevDist <= edgeSlop && prevDist < foreignDist) {
+    offset = 0;
+  }
 
   return offset;
 }
@@ -305,8 +348,13 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
 }
 
 function insertOwnBlockAtEnd(container, writer) {
-  const formatMode = getFormatMode();
   const last = container.querySelector(".entry-block:last-of-type");
+  if (isOwnEditableBlock(last, writer)) {
+    focusBlockCaret(last, true);
+    return;
+  }
+
+  const formatMode = getFormatMode();
   const span = document.createElement("span");
   span.className = `entry-block ${writer.cssClass} ${formatMode}`;
   span.dataset.writerId = writer.id;
