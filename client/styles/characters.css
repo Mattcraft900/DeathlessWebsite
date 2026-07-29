@@ -1,21 +1,11 @@
 @import './shared.css';
 
-#intro-blurb {
-  text-align: justify;
+.empty-message {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 1.25em;
 }
 
-.category-heading {
-  font-size: 1.3em;
-  margin: 2em 0 0.5em;
-  text-align: left;
-}
-
-.opc-gallery {
-  grid-template-columns: 1fr 1fr;
-}
-
-@media screen and (min-width: 600px) {
-  .opc-gallery {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.character-gallery {
+    margin-bottom: 60px;
 }

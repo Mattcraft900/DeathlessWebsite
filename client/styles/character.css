@@ -25,12 +25,6 @@
   text-decoration: underline;
 }
 
-#character-name {
-  font-size: 3em;
-  font-weight: normal;
-  margin: 20px 0;
-}
-
 #character-img {
   border-radius: 20px;
   height: 600px;

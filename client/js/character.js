@@ -38,17 +38,26 @@ function renderCharacter(main, data) {
   const editable = isEditMode();
 
   main.innerHTML = `
-    <h1 id="character-name"></h1>
+    <h1 id="character-name" class="page-title"></h1>
     <img id="character-img" class="hidden" alt="">
-    <dl id="stats-list"></dl>
-    <div id="dropdown-div">
-      <label for="format-dropdown">Formatting:</label>
-      <select id="format-dropdown" class="dropdown">
-        <option value="simple">Simple</option>
-        <option value="stylized" selected>Stylized</option>
-      </select>
-    </div>
-    <div id="character-description"></div>
+    <hr>
+    <section id="stats-section">
+      <h2 id="stats-heading" class="section-heading">Character Stats</h2>
+      <div id="stats-list"></div>
+    </section>
+    <hr>
+    <section id="description-section">
+      <h2 id="description-heading" class="section-heading">Lucy's Notes:</h2>
+      <div id="dropdown-div">
+        <label for="format-dropdown">Formatting:</label>
+        <select id="format-dropdown" class="dropdown">
+          <option value="simple">Simple</option>
+          <option value="stylized" selected>Stylized</option>
+        </select>
+      </div>
+      <div id="character-description"></div>
+    </section>
+    <hr>
   `;
 
   document.getElementById("character-name").textContent = character.name;
@@ -59,17 +68,20 @@ function renderCharacter(main, data) {
   const stats = document.getElementById("stats-list");
   const addStat = (label, value) => {
     if (!value) return;
-    const dt = document.createElement("dt");
-    dt.className = "stat-name";
-    dt.textContent = `${label}: `;
-    const dd = document.createElement("dd");
-    dd.className = "stat-value";
-    dd.textContent = value;
-    stats.append(dt, dd);
+    const wrap = document.createElement("div");
+    wrap.className = "stat-div";
+    const nameEl = document.createElement("span");
+    nameEl.className = "stat-name";
+    nameEl.textContent = `${label}: `;
+    const valueEl = document.createElement("span");
+    valueEl.className = "stat-value";
+    valueEl.textContent = value;
+    wrap.append(nameEl, valueEl);
+    stats.append(wrap);
   };
 
   if (character.fullName && character.fullName !== character.name) {
-    addStat("Full name", character.fullName);
+    addStat("Full Name", character.fullName);
   }
   addStat("Age", character.age);
   addStat("Species", character.species);
@@ -79,9 +91,9 @@ function renderCharacter(main, data) {
     addStat("Player", character.playerName);
     addStat("Class", classesToString(character.classes));
   } else if (character.category === "opc") {
-    addStat("Original player", character.playerName);
+    addStat("Original Player", character.playerName);
     if (character.locationHome) addStat("Home", character.locationHome);
-    if (character.locationLast) addStat("Last seen", character.locationLast);
+    if (character.locationLast) addStat("Last Seen", character.locationLast);
   }
 
   const desc = document.getElementById("character-description");

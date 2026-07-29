@@ -147,18 +147,11 @@ function escapeHtml(str) {
 
 function setupFormatControls() {
   const sessionCheck = document.getElementById("session-check");
-  const datesCheck = document.getElementById("game-date-check");
   const formatDropdown = document.getElementById("format-dropdown");
 
   sessionCheck?.addEventListener("change", () => {
     document.querySelectorAll(".session-title").forEach((el) => {
       el.classList.toggle("hidden", !sessionCheck.checked);
-    });
-  });
-
-  datesCheck?.addEventListener("change", () => {
-    document.querySelectorAll(".game-date-heading").forEach((el) => {
-      el.classList.toggle("hidden", !datesCheck.checked);
     });
   });
 

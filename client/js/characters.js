@@ -11,20 +11,30 @@ function buildCharacterCard(character) {
 }
 
 function renderGallery(container, characters) {
+  if (!characters.length) {
+    const emptyMessage = document.createElement("p");
+    emptyMessage.className = "empty-message voice-lucy stylized";
+    emptyMessage.textContent = "No characters here yet. :)";
+    container.replaceChildren(emptyMessage);
+    return;
+  }
   container.innerHTML = characters.map(buildCharacterCard).join("");
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
   const partyGallery = document.getElementById("party-gallery");
   const opcGallery = document.getElementById("opc-gallery");
+  const npcGallery = document.getElementById("npc-gallery");
 
   try {
     const { characters } = await apiGet("/characters");
     const party = characters.filter((c) => c.category === "party");
     const opc = characters.filter((c) => c.category === "opc");
+    const npc = characters.filter((c) => c.category === "npc");
 
     if (partyGallery) renderGallery(partyGallery, party);
     if (opcGallery) renderGallery(opcGallery, opc);
+    if (npcGallery) renderGallery(npcGallery, npc);
   } catch (err) {
     console.error(err);
     if (partyGallery) partyGallery.innerHTML = `<p>Could not load characters.</p>`;

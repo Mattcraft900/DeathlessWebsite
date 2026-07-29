@@ -5,6 +5,7 @@
 }
 
 #title-img {
+    display: block;
   width: 100%;
   height: calc(min(50vh, 640px));
   object-fit: cover;

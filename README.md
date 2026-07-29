@@ -100,7 +100,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 
 - [x] Fix multiple-user concurrency issues
 - [x] Fix weird insert block position bugs
-- [ ] Standardize white space between voice blocks
+- [x] Standardize white space between voice blocks
 - [ ]
 
 ### Wanted for MVP
@@ -109,6 +109,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 - [ ] Implement a route for players to change their PIN
 - [ ] Restore old site layouts
 - [ ] Test infinite scrolling/jump-to functions on the travelogue.
+    - [ ] Implement jump-to menu(s) for mobile
     - Will need to first generate tons of placeholder entries for the travelogue
 - [ ] Refactor the logo as SVG + get favicon files
 - [ ] Figure out a better method of "simplified" styles for six different voices. 
@@ -118,17 +119,25 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 
 ### Non-MVP
 
-- [ ] Color palette overhaul
+- [ ] Touch up page intro blurbs
 - [ ] Rich-text/WYSIWYG editor while editing
     - [ ] Include undo/redo buttons (primarily for mobile)
-- [x] Persistent header(s)
-    - [ ] Sticky headings for travelogue session entries & character list categories
 - [ ] UX for adding new travelogue entries
 - [ ] UX for adding new characters
 - [ ] UX for players to update their own font & color (same place as reset PIN?)
 - [ ] "Dirty warnings" on navigation or reload while in Edit mode
+- [ ] Allow players to edit/add their own character's stats on the character page
 
+#### Style
 
+- [ ] Color palette overhaul
+- [x] Persistent header(s)
+    - [ ] Sticky headings for travelogue session entries & character list categories
+- [ ] Box shadow around Deathless title
+
+- [ ] Code practices standardizations:
+    - tab width from 2 -> 4
+    - Refactor style applications, etc.
 
 ### Current task: Standardizing whitespace between blocks
 

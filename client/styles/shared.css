@@ -88,8 +88,7 @@ header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-start;
-  gap: 0.5em;
+  justify-content: flex-end;
 }
 
 #menu-btn {
@@ -402,6 +401,12 @@ body.edit-mode {
   padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
 }
 
+.page-title {
+  font-size: 3em;
+  font-weight: normal;
+  margin: 40px 0 20px;
+}
+
 .section-heading {
   margin: 30px 0 15px;
   text-decoration: underline;
@@ -571,6 +576,7 @@ footer {
 
   .header-inner {
     flex-wrap: nowrap;
+    gap: 0.5em;
   }
 
   #menu-list {
