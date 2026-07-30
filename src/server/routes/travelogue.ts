@@ -9,7 +9,7 @@ export const travelogueRouter = Router();
 
 travelogueRouter.get("/toc", async (_req, res, next) => {
   try {
-    const sessions = await db
+    const sessionRows = await db
       .select({
         id: entries.id,
         title: entries.title,
@@ -32,25 +32,55 @@ travelogueRouter.get("/toc", async (_req, res, next) => {
       .where(eq(entries.type, "game_date"))
       .orderBy(asc(entries.sortRank));
 
-    const dates: {
-      dateKey: string;
-      title: string;
-      anchorEntryId: string;
-    }[] = [];
-    const seen = new Set<string>();
+    const headedByDateKey = new Map<string, (typeof dateChunks)[number]>();
     for (const chunk of dateChunks) {
-      if (!chunk.dateKey || seen.has(chunk.dateKey)) continue;
-      seen.add(chunk.dateKey);
-      const headed =
-        dateChunks.find((c) => c.dateKey === chunk.dateKey && c.showHeading) ?? chunk;
-      dates.push({
-        dateKey: chunk.dateKey,
-        title: headed.title || chunk.title || chunk.dateKey,
-        anchorEntryId: headed.id,
-      });
+      if (!chunk.dateKey || !chunk.showHeading) continue;
+      if (!headedByDateKey.has(chunk.dateKey)) headedByDateKey.set(chunk.dateKey, chunk);
     }
 
-    res.json({ sessions, dates });
+    const datesByParent = new Map<string, typeof dateChunks>();
+    for (const chunk of dateChunks) {
+      if (!chunk.parentId) continue;
+      const list = datesByParent.get(chunk.parentId) ?? [];
+      list.push(chunk);
+      datesByParent.set(chunk.parentId, list);
+    }
+
+    const seen = new Set<string>();
+    const sessions = sessionRows.map((session) => {
+      const dates: {
+        dateKey: string;
+        title: string;
+        anchorEntryId: string;
+      }[] = [];
+
+      const children = [...(datesByParent.get(session.id) ?? [])];
+      children.sort((a, b) =>
+        a.sortRank < b.sortRank ? -1 : a.sortRank > b.sortRank ? 1 : 0,
+      );
+
+      for (const chunk of children) {
+        if (!chunk.dateKey || chunk.dateKey === "prologue" || seen.has(chunk.dateKey)) {
+          continue;
+        }
+        seen.add(chunk.dateKey);
+        const headed = headedByDateKey.get(chunk.dateKey) ?? chunk;
+        dates.push({
+          dateKey: chunk.dateKey,
+          title: headed.title || chunk.title || chunk.dateKey,
+          anchorEntryId: headed.id,
+        });
+      }
+
+      return {
+        id: session.id,
+        title: session.title,
+        sortRank: session.sortRank,
+        dates,
+      };
+    });
+
+    res.json({ sessions });
   } catch (err) {
     next(err);
   }

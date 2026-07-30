@@ -29,27 +29,30 @@
         </form>
       </div>
     </section>
-    <div id="format-settings">
-      <div id="checkboxes">
-        <div class="checkbox-div">
-          <label for="session-check">Turn off session dates/titles</label>
-          <input type="checkbox" id="session-check" checked>
-        </div>
-      </div>
-      <div id="dropdown-div">
-        <label for="format-dropdown">Formatting:</label>
-        <select id="format-dropdown">
-          <option value="simple">Simple</option>
-          <option value="stylized" selected>Stylized</option>
-        </select>
-      </div>
-    </div>
-    <hr>
     <div class="travelogue-layout">
-      <aside class="travelogue-sidebar" id="sessions-sidebar">
-        <div class="sidebar-section">
-          <h3>Sessions</h3>
-          <ul class="sidebar-list" id="sessions-sidebar-list"></ul>
+      <aside class="travelogue-sidebar travelogue-panel" id="format-sidebar">
+        <div id="dropdown-div">
+          <label for="format-dropdown">Formatting:</label>
+          <select id="format-dropdown">
+            <option value="simple">Simple</option>
+            <option value="stylized" selected>Stylized</option>
+          </select>
+        </div>
+        <div id="checkboxes">
+          <div class="checkbox-div">
+            <label for="session-check">Turn off session dates/titles</label>
+            <input type="checkbox" id="session-check" checked>
+          </div>
+        </div>
+      </aside>
+      <aside class="travelogue-sidebar travelogue-panel" id="jump-sidebar">
+        <button type="button" class="jump-toggle" id="jump-toggle" aria-expanded="false" aria-controls="jump-to-list">
+          <span class="jump-toggle-label">Jump to...</span>
+          <span class="jump-chevron" aria-hidden="true"></span>
+        </button>
+        <h3 class="jump-heading">Jump to...</h3>
+        <div class="jump-list-collapse">
+          <ul class="sidebar-list jump-list" id="jump-to-list"></ul>
         </div>
       </aside>
       <div class="travelogue-main">
@@ -59,13 +62,10 @@
           <div id="scroll-sentinel" aria-hidden="true"></div>
         </div>
       </div>
-      <aside class="travelogue-sidebar" id="dates-sidebar">
-        <div class="sidebar-section">
-          <h3>In-game dates</h3>
-          <ul class="sidebar-list" id="dates-sidebar-list"></ul>
-        </div>
-      </aside>
     </div>
   </main>
+  <button type="button" id="back-to-top" class="back-to-top" aria-hidden="true" aria-label="Back to top">
+    Back to top <span class="back-to-top-arrow" aria-hidden="true">↑</span>
+  </button>
 </body>
 </html>

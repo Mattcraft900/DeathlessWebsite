@@ -5,13 +5,17 @@ import { initEditChrome, isEditMode } from "./edit-chrome.js";
 
 const sessionsContainer = document.getElementById("travelogue-sessions");
 const loadMoreBtn = document.getElementById("load-more-btn");
-const sessionsSidebar = document.getElementById("sessions-sidebar-list");
-const datesSidebar = document.getElementById("dates-sidebar-list");
+const jumpToList = document.getElementById("jump-to-list");
+const jumpSidebar = document.getElementById("jump-sidebar");
+const jumpToggle = document.getElementById("jump-toggle");
 const adminPanel = document.getElementById("admin-session-panel");
 const newSessionForm = document.getElementById("new-session-form");
 
+const JUMP_COLLAPSE_MS = 320;
+
 let nextCursor = null;
 let loading = false;
+let loadPromise = null;
 let tocData = null;
 let sentinelObserver = null;
 
@@ -40,10 +44,14 @@ function renderGameDateHeading(chunk) {
 function renderGameDateEntry(chunk, editable) {
   const wrap = document.createElement("article");
   wrap.className = "game-date-entry";
-  wrap.id = `entry-${chunk.id}`;
 
   const heading = renderGameDateHeading(chunk);
-  if (heading) wrap.appendChild(heading);
+  if (heading) {
+    wrap.appendChild(heading);
+  } else {
+    // No visible heading — anchor the chunk wrapper itself
+    wrap.id = `entry-${chunk.id}`;
+  }
 
   const blocksEl = document.createElement("div");
   renderEntryBlocks(blocksEl, chunk, { editable });
@@ -60,6 +68,12 @@ function renderSession(session, editable) {
   for (const chunk of session.gameDates || []) {
     block.appendChild(renderGameDateEntry(chunk, editable));
   }
+
+  const sessionCheck = document.getElementById("session-check");
+  if (sessionCheck && !sessionCheck.checked) {
+    block.querySelector(".session-title")?.classList.add("hidden");
+  }
+
   return block;
 }
 
@@ -80,61 +94,106 @@ function setupInfiniteScroll() {
 }
 
 async function loadSessions(append = false) {
-  if (loading) return;
+  if (loading) {
+    await loadPromise;
+    return;
+  }
   loading = true;
   if (loadMoreBtn) loadMoreBtn.disabled = true;
 
-  try {
-    const qs = new URLSearchParams({ limit: "3" });
-    if (append && nextCursor) qs.set("after", nextCursor);
+  loadPromise = (async () => {
+    try {
+      const qs = new URLSearchParams({ limit: "3" });
+      if (append && nextCursor) qs.set("after", nextCursor);
 
-    const data = await apiGet(`/travelogue/sessions?${qs}`);
-    const editable = isEditMode();
+      const data = await apiGet(`/travelogue/sessions?${qs}`);
+      const editable = isEditMode();
 
-    if (!append) sessionsContainer.innerHTML = "";
+      if (!append) sessionsContainer.innerHTML = "";
 
-    for (const session of data.sessions) {
-      sessionsContainer.appendChild(renderSession(session, editable));
+      for (const session of data.sessions) {
+        sessionsContainer.appendChild(renderSession(session, editable));
+      }
+
+      nextCursor = data.nextCursor;
+      if (loadMoreBtn) {
+        loadMoreBtn.classList.toggle("hidden", !nextCursor);
+        loadMoreBtn.disabled = false;
+      }
+    } catch (err) {
+      console.error(err);
+      if (!append) {
+        sessionsContainer.innerHTML = `<p>Could not load travelogue.</p>`;
+      }
+    } finally {
+      loading = false;
     }
+  })();
 
-    nextCursor = data.nextCursor;
-    if (loadMoreBtn) {
-      loadMoreBtn.classList.toggle("hidden", !nextCursor);
-      loadMoreBtn.disabled = false;
+  await loadPromise;
+}
+
+/** Keep loading pages until the jump target exists (or nothing left to load). */
+async function ensureEntryInDom(domId) {
+  for (;;) {
+    const el = document.getElementById(domId);
+    if (el) return el;
+    if (loading) {
+      await loadPromise;
+      continue;
     }
-  } catch (err) {
-    console.error(err);
-    if (!append) {
-      sessionsContainer.innerHTML = `<p>Could not load travelogue.</p>`;
-    }
-  } finally {
-    loading = false;
+    if (!nextCursor) return null;
+    await loadSessions(true);
   }
 }
 
-function renderSidebars() {
-  if (!tocData) return;
+function collapseJumpMenu() {
+  if (!jumpSidebar?.classList.contains("is-open")) return 0;
+  jumpSidebar.classList.remove("is-open");
+  jumpToggle?.setAttribute("aria-expanded", "false");
+  return JUMP_COLLAPSE_MS;
+}
 
-  if (sessionsSidebar) {
-    sessionsSidebar.innerHTML = tocData.sessions
-      .map(
-        (s) =>
-          `<li><a href="#entry-${s.id}">${escapeHtml(s.title || "Session")}</a></li>`,
-      )
-      .join("");
+function scrollTargetFor(el) {
+  if (
+    el.matches(".session-title, .game-date-heading") ||
+    !el.querySelector
+  ) {
+    return el;
   }
+  return el.querySelector(".session-title, .game-date-heading") || el;
+}
 
-  if (datesSidebar) {
-    datesSidebar.innerHTML = tocData.dates
-      .map((d) => {
-        const label =
-          d.dateKey === "prologue"
-            ? "Prologue"
-            : d.title || d.dateKey;
-        return `<li><a href="#entry-${d.anchorEntryId}">${escapeHtml(label)}</a></li>`;
-      })
-      .join("");
+async function jumpToDomId(domId) {
+  const waitCollapse = collapseJumpMenu();
+  const el = await ensureEntryInDom(domId);
+  if (!el) return false;
+  if (waitCollapse) {
+    await new Promise((r) => setTimeout(r, waitCollapse));
   }
+  scrollTargetFor(el).scrollIntoView({ behavior: "instant", block: "start" });
+  history.pushState(null, "", `#${domId}`);
+  return true;
+}
+
+function renderJumpToList() {
+  if (!tocData || !jumpToList) return;
+
+  const items = [];
+  for (const session of tocData.sessions || []) {
+    items.push(
+      `<li class="jump-session"><a href="#entry-${session.id}">${escapeHtml(session.title || "Session")}</a></li>`,
+    );
+    for (const d of session.dates || []) {
+      // Prologue is a session heading only in the Jump to UX
+      if (d.dateKey === "prologue") continue;
+      const label = d.title || d.dateKey;
+      items.push(
+        `<li class="jump-date"><a href="#entry-${d.anchorEntryId}">${escapeHtml(label)}</a></li>`,
+      );
+    }
+  }
+  jumpToList.innerHTML = items.join("");
 }
 
 function escapeHtml(str) {
@@ -143,6 +202,59 @@ function escapeHtml(str) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+function setupBackToTop() {
+  const btn = document.getElementById("back-to-top");
+  if (!btn) return;
+
+  let lastY = window.scrollY;
+  let visible = false;
+
+  const setVisible = (show) => {
+    if (show === visible) return;
+    visible = show;
+    btn.classList.toggle("is-visible", show);
+    btn.setAttribute("aria-hidden", show ? "false" : "true");
+  };
+
+  const onScroll = () => {
+    const y = window.scrollY;
+    const goingUp = y < lastY;
+    const farEnough = y > 1000;
+    setVisible(goingUp && farEnough);
+    lastY = y;
+  };
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+
+  btn.addEventListener("click", () => {
+    const filters = document.getElementById("format-sidebar");
+    if (filters) {
+      filters.scrollIntoView({ behavior: "instant", block: "start" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+    setVisible(false);
+  });
+}
+
+function setupJumpToggle() {
+  jumpToggle?.addEventListener("click", () => {
+    const open = jumpSidebar?.classList.toggle("is-open");
+    jumpToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+}
+
+function setupJumpLinks() {
+  jumpToList?.addEventListener("click", (e) => {
+    const link = e.target.closest("a[href^='#entry-']");
+    if (!link) return;
+    e.preventDefault();
+    const domId = link.getAttribute("href")?.slice(1);
+    if (!domId) return;
+    jumpToDomId(domId);
+  });
 }
 
 function setupFormatControls() {
@@ -168,7 +280,7 @@ function updateAdminPanel() {
 
 async function refreshToc() {
   tocData = await apiGet("/travelogue/toc");
-  renderSidebars();
+  renderJumpToList();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -183,8 +295,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadSessions(false);
   setupFormatControls();
+  setupJumpToggle();
+  setupJumpLinks();
+  setupBackToTop();
   setupInfiniteScroll();
   updateAdminPanel();
+
+  // Deep-link support: #entry-… may point at a not-yet-loaded session
+  const hashId = location.hash?.replace(/^#/, "");
+  if (hashId?.startsWith("entry-")) {
+    await jumpToDomId(hashId);
+  }
 
   loadMoreBtn?.addEventListener("click", () => loadSessions(true));
 

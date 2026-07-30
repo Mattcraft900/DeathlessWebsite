@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "db:append-travelogue": "tsx scripts/append-travelogue-session.ts",
     "db:setup": "npm run db:migrate && npm run db:seed",
     "db:local": "tsx scripts/local-db.ts"
   },

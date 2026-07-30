@@ -101,15 +101,15 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 - [x] Fix multiple-user concurrency issues
 - [x] Fix weird insert block position bugs
 - [x] Standardize white space between voice blocks
-- [ ]
+- [ ] Margin disappears immediately on collapse Jump To menu (mobile)
 
 ### Wanted for MVP
 
 - [x] Move the "Writing as" dropdown.
 - [ ] Implement a route for players to change their PIN
-- [ ] Restore old site layouts
+- [x] Restore old site layouts
 - [ ] Test infinite scrolling/jump-to functions on the travelogue.
-    - [ ] Implement jump-to menu(s) for mobile
+    - [x] Implement jump-to menu(s) for mobile
     - Will need to first generate tons of placeholder entries for the travelogue
 - [ ] Refactor the logo as SVG + get favicon files
 - [ ] Figure out a better method of "simplified" styles for six different voices. 
@@ -122,6 +122,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 - [ ] Touch up page intro blurbs
 - [ ] Rich-text/WYSIWYG editor while editing
     - [ ] Include undo/redo buttons (primarily for mobile)
+- [ ] On a *new branch*, try out pagination instead of infinite scroll on the travelogue page
 - [ ] UX for adding new travelogue entries
 - [ ] UX for adding new characters
 - [ ] UX for players to update their own font & color (same place as reset PIN?)
@@ -137,9 +138,12 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 
 - [ ] Code practices standardizations:
     - tab width from 2 -> 4
-    - Refactor style applications, etc.
+    - COMMENT BLOCKS PLEASE
+    - Ensure aria tags are all appropriately assigned
+    - reorganize/standardize class selectors, et. al.
+    - 
 
-### Current task: Standardizing whitespace between blocks
+### Current task: 
 
 #### List items:
 

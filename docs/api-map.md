@@ -208,7 +208,7 @@ Ordered by `sortRank`.
 
 ### `GET /api/travelogue/toc`
 
-**Use case:** Table of contents for travelogue sidebars (session titles and unique in-game dates).
+**Use case:** Table of contents for the travelogue “Jump to…” list (sessions with nested unique in-game dates, in document order).
 
 **Auth:** None
 
@@ -216,13 +216,17 @@ Ordered by `sortRank`.
 ```json
 {
   "sessions": [
-    { "id": "uuid", "title": "6.13.26 - \"Saint Dane\"", "sortRank": "a0" }
-  ],
-  "dates": [
     {
-      "dateKey": "568-07-13",
-      "title": "7 / 13 / 568",
-      "anchorEntryId": "uuid"
+      "id": "uuid",
+      "title": "6.13.26 - \"Saint Dane\"",
+      "sortRank": "a0",
+      "dates": [
+        {
+          "dateKey": "568-07-13",
+          "title": "7 / 13 / 568",
+          "anchorEntryId": "uuid"
+        }
+      ]
     }
   ]
 }

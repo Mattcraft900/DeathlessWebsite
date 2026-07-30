@@ -402,7 +402,7 @@ body.edit-mode {
 }
 
 .page-title {
-  font-size: 3em;
+  font-size: clamp(6cqw, 3em, 12cqw);
   font-weight: normal;
   margin: 40px 0 20px;
 }
