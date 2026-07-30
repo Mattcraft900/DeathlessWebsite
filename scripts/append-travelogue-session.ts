@@ -1,20 +1,29 @@
 /**
- * Append travelogue sessions from scripts/data/travelogue.json that are not
- * already present (matched by session title). Does NOT wipe existing data.
+ * Append travelogue sessions from JSON that are not already present
+ * (matched by session title). Does NOT wipe existing data.
  *
  * Usage:
  *   npx tsx scripts/append-travelogue-session.ts
+ *   npx tsx scripts/append-travelogue-session.ts --stress
+ *   npx tsx scripts/append-travelogue-session.ts --file=scripts/data/foo.json
  *   npx tsx scripts/append-travelogue-session.ts --title=Session Title Here
  *   npx tsx scripts/append-travelogue-session.ts --delete-title=Session Title Here
+ *   npx tsx scripts/append-travelogue-session.ts --delete-stress
  *
  * Points at whatever DATABASE_URL is in .env (local or Neon).
  */
 import "dotenv/config";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import { db, pool } from "../src/db/index.js";
 import { blocks, entries, writers } from "../src/db/schema.js";
-import travelogueData from "./data/travelogue.json" with { type: "json" };
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DEFAULT_FILE = resolve(__dirname, "data/travelogue.json");
+const STRESS_FILE = resolve(__dirname, "data/travelogue-stress.json");
 
 type TravelogueSession = {
   session_date: string;
@@ -134,6 +143,21 @@ function dbHostHint(url: string | undefined): string {
   }
 }
 
+function loadSessionsFile(path: string): TravelogueSession[] {
+  const raw = JSON.parse(readFileSync(path, "utf8")) as TravelogueSession[];
+  if (!Array.isArray(raw)) {
+    throw new Error(`Expected an array in ${path}`);
+  }
+  return raw;
+}
+
+function resolveSessionsPath(argv: string[]): string {
+  if (argv.includes("--stress")) return STRESS_FILE;
+  const file = parseFlagValue(argv, "file");
+  if (file) return resolve(process.cwd(), file);
+  return DEFAULT_FILE;
+}
+
 async function deleteSessionByTitle(title: string): Promise<boolean> {
   const sessions = await db
     .select({ id: entries.id, title: entries.title })
@@ -235,9 +259,24 @@ async function main() {
   const argv = process.argv.slice(2);
   const titleFilter = parseFlagValue(argv, "title");
   const deleteTitle = parseFlagValue(argv, "delete-title");
+  const deleteContains = parseFlagValue(argv, "delete-title-contains");
+  const deleteStress = argv.includes("--delete-stress");
+  const sessionsPath = resolveSessionsPath(argv);
+
   console.log(`Target DB: ${dbHostHint(process.env.DATABASE_URL)}`);
 
-  const deleteContains = parseFlagValue(argv, "delete-title-contains");
+  if (deleteStress) {
+    const stressSessions = loadSessionsFile(STRESS_FILE);
+    let removed = 0;
+    for (const session of stressSessions) {
+      if (await deleteSessionByTitle(session.session_date)) removed++;
+    }
+    console.log(`Stress cleanup done. Removed ${removed} session(s).`);
+    // Default: delete only. Pass --stress or --append-after-delete to also append.
+    if (!argv.includes("--append-after-delete") && !argv.includes("--stress") && !titleFilter) {
+      return;
+    }
+  }
 
   if (deleteTitle) {
     await deleteSessionByTitle(deleteTitle);
@@ -255,17 +294,24 @@ async function main() {
     }
   }
 
-  if ((deleteTitle || deleteContains) && !argv.includes("--append-after-delete") && !titleFilter) {
+  if (
+    (deleteTitle || deleteContains) &&
+    !deleteStress &&
+    !argv.includes("--append-after-delete") &&
+    !titleFilter &&
+    !argv.includes("--stress")
+  ) {
     return;
   }
 
-  const allSessions = travelogueData as TravelogueSession[];
+  console.log(`Source: ${sessionsPath}`);
+  const allSessions = loadSessionsFile(sessionsPath);
   const candidates = titleFilter
     ? allSessions.filter((s) => s.session_date === titleFilter)
     : allSessions;
 
   if (titleFilter && candidates.length === 0) {
-    console.error(`No session in travelogue.json with title:\n  ${titleFilter}`);
+    console.error(`No session in ${sessionsPath} with title:\n  ${titleFilter}`);
     process.exit(1);
   }
 
