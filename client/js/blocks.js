@@ -217,22 +217,34 @@ function getCaretOffsetInBlock(span) {
 }
 
 function handleEnterInOwnBlock(span, writer, e) {
+  e.preventDefault();
+
   const role = paragraphRole(span);
-  if (role === "middle") {
-    e.preventDefault();
+  const text = span.textContent ?? "";
+  const offset = getCaretOffsetInBlock(span);
+  const atStart = offset === 0;
+  const atEnd = offset >= text.length;
+  const container = span.parentElement;
+  const prev = blockSibling(span, "prev");
+  const next = blockSibling(span, "next");
+
+  // Boundary fix: Enter at end → following block starts a paragraph.
+  // (e.g. Lucy at end of her text before an inline Nemah that should be its own para)
+  if (atEnd && next && !readStartsParagraph(next)) {
+    setStartsParagraph(next, true);
+    refreshBlockSeparators(container);
     return;
   }
 
-  const text = span.textContent ?? "";
-  const offset = getCaretOffsetInBlock(span);
-  const container = span.parentElement;
+  // Boundary fix: Enter at start → this block starts a paragraph.
+  if (atStart && prev && !readStartsParagraph(span)) {
+    setStartsParagraph(span, true);
+    refreshBlockSeparators(container);
+    return;
+  }
 
-  // First-but-not-last: only allow inserting a new paragraph above at caret 0.
-  if (role === "first") {
-    e.preventDefault();
-    if (offset !== 0) return;
-
-    const prev = blockSibling(span, "prev");
+  // First-in-paragraph at caret 0: insert an empty own paragraph above.
+  if (role === "first" && atStart) {
     const formatMode = getFormatMode();
     const empty = document.createElement("span");
     empty.className = `entry-block ${writer.cssClass} ${formatMode}`;
@@ -252,18 +264,19 @@ function handleEnterInOwnBlock(span, writer, e) {
     return;
   }
 
-  // Last or only: split at caret into current + new paragraph block.
-  e.preventDefault();
+  // Split at caret into current + new paragraph block.
+  // Keep the edited block's voice (admin splitting Nemah stays Nemah).
   const before = text.slice(0, offset);
   const after = text.slice(offset);
-  const next = blockSibling(span, "next");
   span.textContent = before;
   syncEmptyAttr(span);
 
   const formatMode = getFormatMode();
+  const voiceClass = voiceClassFromEl(span) || writer.cssClass;
+  const voiceWriterId = span.dataset.writerId || writer.id;
   const neu = document.createElement("span");
-  neu.className = `entry-block ${writer.cssClass} ${formatMode}`;
-  neu.dataset.writerId = writer.id;
+  neu.className = `entry-block ${voiceClass} ${formatMode}`;
+  neu.dataset.writerId = voiceWriterId;
   neu.dataset.sortRank = generateKeyBetween(
     span.dataset.sortRank ?? null,
     next?.dataset.sortRank ?? null,
@@ -283,7 +296,8 @@ function wireOwnEditable(span) {
   span.addEventListener("keydown", (e) => {
     if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
     const writer = getCurrentWriter();
-    if (!writer || span.dataset.writerId !== writer.id) return;
+    // Session writer may be admin editing another voice — still handle Enter.
+    if (!writer) return;
     handleEnterInOwnBlock(span, writer, e);
   });
   span.addEventListener("blur", () => {
