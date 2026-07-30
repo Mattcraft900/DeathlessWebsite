@@ -121,6 +121,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 
 - [ ] Touch up page intro blurbs
 - [ ] Rich-text/WYSIWYG editor while editing
+    - At least include functionality for bold/italics/strikethrough
     - [ ] Include undo/redo buttons (primarily for mobile)
 - [ ] On a *new branch*, try out pagination instead of infinite scroll on the travelogue page
 - [ ] UX for adding new travelogue entries
@@ -132,9 +133,15 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 #### Style
 
 - [ ] Color palette overhaul
+- [ ] Find a good subheading font
 - [x] Persistent header(s)
     - [ ] Sticky headings for travelogue session entries & character list categories
 - [ ] Box shadow around Deathless title
+- [ ] Travelogue sidebars:
+    - [ ] remove/change coloring on format options section
+    - [ ] Center checkbox vertically for hiding session names
+    - [ ] Shrink/clamp text on right sidebar to remove the horizontal scroll
+    - [ ] Add top margin for both so they don't look so high compared to the travelogue content
 
 - [ ] Code practices standardizations:
     - tab width from 2 -> 4
@@ -142,6 +149,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
     - Ensure aria tags are all appropriately assigned
     - reorganize/standardize class selectors, et. al.
     - Get rid of dead code, streamline repetitive code
+    - Shift margins on children to padding on parents where possible to prevent margins overreaching the parent container
     
 
 ### Current task: 

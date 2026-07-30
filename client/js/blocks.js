@@ -72,7 +72,8 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
         pointerDownOnBlock = false;
         return;
       }
-      insertOwnBlockAtEnd(container, writer);
+      e.preventDefault();
+      handleContainerClick(container, writer, e.clientX, e.clientY);
     };
   } else {
     container.onclick = null;
@@ -300,6 +301,18 @@ function wireOwnEditable(span) {
     if (!writer) return;
     handleEnterInOwnBlock(span, writer, e);
   });
+  // Empty remainder of last line before a paragraph break (often hits the
+  // editable span itself, especially for admin/Lucy) → caret at end.
+  span.addEventListener("pointerdown", (e) => {
+    if (e.button != null && e.button !== 0) return;
+    const next = blockSibling(span, "next");
+    if (!next || !readStartsParagraph(next)) return;
+    const last = blockEdgeAnchors(span).end.rect;
+    if (e.clientY < last.top - 2 || e.clientY > last.bottom + 2) return;
+    if (e.clientX <= last.right) return;
+    e.preventDefault();
+    focusBlockCaret(span, true);
+  });
   span.addEventListener("blur", () => {
     setTimeout(() => discardIfEmpty(span), 0);
   });
@@ -313,20 +326,25 @@ function distanceToRect(x, y, rect) {
 
 function focusBlockCaret(span, atEnd) {
   span.focus();
-  const selection = window.getSelection();
-  if (!selection) return;
-  const range = document.createRange();
-  const textNode = [...span.childNodes].find((n) => n.nodeType === Node.TEXT_NODE);
-  if (textNode) {
-    const len = textNode.textContent?.length ?? 0;
-    range.setStart(textNode, atEnd ? len : 0);
-    range.collapse(true);
-  } else {
-    range.selectNodeContents(span);
-    range.collapse(!atEnd);
-  }
-  selection.removeAllRanges();
-  selection.addRange(range);
+  const place = () => {
+    const selection = window.getSelection();
+    if (!selection) return;
+    const range = document.createRange();
+    const textNode = [...span.childNodes].find((n) => n.nodeType === Node.TEXT_NODE);
+    if (textNode) {
+      const len = textNode.textContent?.length ?? 0;
+      range.setStart(textNode, atEnd ? len : 0);
+      range.collapse(true);
+    } else {
+      range.selectNodeContents(span);
+      range.collapse(!atEnd);
+    }
+    selection.removeAllRanges();
+    selection.addRange(range);
+  };
+  place();
+  // Some browsers reset the caret to offset 0 on focus; re-apply after that.
+  requestAnimationFrame(place);
 }
 
 /**
@@ -517,6 +535,167 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
   foreignSpan.after(own, continuation);
   refreshBlockSeparators(container);
   focusBlockCaret(own, false);
+}
+
+/**
+ * On-screen start/end anchors for a block: left-center of the first line
+ * fragment and right-center of the last (not the fat union box). For a
+ * one-line block these are opposite ends of the same line box.
+ */
+function blockEdgeAnchors(span) {
+  const rects = span.getClientRects();
+  if (!rects.length) {
+    const r = span.getBoundingClientRect();
+    return {
+      start: { x: r.left, y: (r.top + r.bottom) / 2, rect: r },
+      end: { x: r.right, y: (r.top + r.bottom) / 2, rect: r },
+      bottom: r.bottom,
+    };
+  }
+  const first = rects[0];
+  const last = rects[rects.length - 1];
+  return {
+    start: { x: first.left, y: (first.top + first.bottom) / 2, rect: first },
+    end: { x: last.right, y: (last.top + last.bottom) / 2, rect: last },
+    bottom: last.bottom,
+  };
+}
+
+function distanceToPoint(x, y, p) {
+  return Math.hypot(x - p.x, y - p.y);
+}
+
+function yOverlapsRect(clientY, rect, slop = 14) {
+  return clientY >= rect.top - slop && clientY <= rect.bottom + slop;
+}
+
+function pointInGlyphBoxes(el, x, y) {
+  for (const r of el.getClientRects()) {
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return true;
+  }
+  return false;
+}
+
+/** Place caret / insert at the end of a block (paragraph-above helper). */
+function placeAtBlockEnd(above, writer) {
+  if (above.isContentEditable) {
+    focusBlockCaret(above, true);
+    return;
+  }
+  const next = blockSibling(above, "next");
+  if (isOwnEditableBlock(next, writer)) {
+    focusBlockCaret(next, false);
+    return;
+  }
+  insertOwnBlockAfter(above, writer);
+}
+
+/**
+ * If the click is in a paragraph gap (or last-line remainder above a break),
+ * return the last block of the paragraph above; otherwise null.
+ * Does not match same-paragraph inter-block spaces.
+ */
+function resolveParaGapAbove(blocks, clientX, clientY) {
+  for (let i = 1; i < blocks.length; i++) {
+    if (!readStartsParagraph(blocks[i])) continue;
+    const above = blocks[i - 1];
+    const below = blocks[i];
+    const aboveLast = blockEdgeAnchors(above).end.rect;
+    const belowFirst = blockEdgeAnchors(below).start.rect;
+    const bandTop = aboveLast.bottom - 4;
+    const bandBottom = belowFirst.top + 4;
+    const inGapBand = clientY >= bandTop && clientY <= bandBottom;
+    const inLastLineRemainder =
+      clientY >= aboveLast.top - 2 &&
+      clientY <= aboveLast.bottom + 4 &&
+      clientX > aboveLast.right - 1;
+    const outsideGlyphs =
+      !pointInGlyphBoxes(above, clientX, clientY) &&
+      !pointInGlyphBoxes(below, clientX, clientY);
+    const betweenParas =
+      outsideGlyphs && clientY >= bandTop && clientY <= bandBottom;
+    if (inGapBand || inLastLineRemainder || betweenParas) return above;
+  }
+  return null;
+}
+
+/**
+ * Clicks on inter-block spaces / para gaps hit the container. Prefer the
+ * nearest real text edge (focus or commentary insert) instead of always
+ * jumping to the end of the entry. Only true trailing padding appends at end.
+ */
+function handleContainerClick(container, writer, clientX, clientY) {
+  const blocks = entryBlocksInOrder(container);
+  if (!blocks.length) {
+    insertOwnBlockAtEnd(container, writer);
+    return;
+  }
+
+  const lastEdges = blockEdgeAnchors(blocks[blocks.length - 1]);
+  if (clientY > lastEdges.bottom + 4) {
+    insertOwnBlockAtEnd(container, writer);
+    return;
+  }
+
+  const paraAbove = resolveParaGapAbove(blocks, clientX, clientY);
+  if (paraAbove) {
+    placeAtBlockEnd(paraAbove, writer);
+    return;
+  }
+
+  const candidates = [];
+  for (const block of blocks) {
+    const { start, end } = blockEdgeAnchors(block);
+    if (yOverlapsRect(clientY, start.rect)) {
+      candidates.push({ block, atEnd: false, dist: distanceToPoint(clientX, clientY, start) });
+    }
+    if (yOverlapsRect(clientY, end.rect)) {
+      candidates.push({ block, atEnd: true, dist: distanceToPoint(clientX, clientY, end) });
+    }
+  }
+
+  // No Y-overlapping edges: if we're below some block that ends a paragraph,
+  // land at that paragraph end — never scan every edge in the entry.
+  if (!candidates.length) {
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      if (blockEdgeAnchors(blocks[i]).bottom > clientY + 4) continue;
+      const next = blocks[i + 1];
+      if (next && readStartsParagraph(next)) {
+        placeAtBlockEnd(blocks[i], writer);
+      }
+      return;
+    }
+    return;
+  }
+
+  let best = null;
+  for (const c of candidates) {
+    if (!best || c.dist < best.dist) best = c;
+  }
+  if (!best) return;
+
+  if (best.block.isContentEditable) {
+    focusBlockCaret(best.block, best.atEnd);
+    return;
+  }
+
+  // Foreign edge: same as insertCommentaryAtPoint at offset 0 / end.
+  if (best.atEnd) {
+    const next = blockSibling(best.block, "next");
+    if (isOwnEditableBlock(next, writer)) {
+      focusBlockCaret(next, false);
+      return;
+    }
+    insertOwnBlockAfter(best.block, writer);
+    return;
+  }
+
+  const prev = blockSibling(best.block, "prev");
+  if (isOwnEditableBlock(prev, writer)) {
+    focusBlockCaret(prev, true);
+    return;
+  }
+  insertOwnBlockBefore(best.block, writer);
 }
 
 function insertOwnBlockAtEnd(container, writer) {
