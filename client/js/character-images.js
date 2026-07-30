@@ -1,15 +1,19 @@
-/** @param {string} slug */
+/**
+ * Character portrait URL helpers and detail-page fallback chain.
+ */
+
+/** @param {string} slug @returns {string} gallery thumbnail path */
 export function smallSrc(slug) {
   return `/images/characters/${slug}-small.jpg`;
 }
 
-/** @param {string} slug */
+/** @param {string} slug @returns {string} full portrait path */
 export function fullSrc(slug) {
   return `/images/characters/${slug}-full.jpg`;
 }
 
 /**
- * Detail portrait: prefer full, fall back to small, then hide.
+ * Detail portrait: prefer full, fall back to small, then hide if both missing.
  * @param {HTMLImageElement} img
  * @param {string} slug
  * @param {string} name

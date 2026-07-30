@@ -1,3 +1,9 @@
+/**
+ * Signed httpOnly cookie session (`deathless_session`).
+ * Payload: writerId.expiry.hmac — verified with SESSION_SECRET (timing-safe).
+ * `attachWriter` loads the writer onto every request; `requireWriter` / `requireAdmin`
+ * gate mutating routes. Client keeps a mirror via `/api/auth/me` + credentials.
+ */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
 import { eq } from "drizzle-orm";

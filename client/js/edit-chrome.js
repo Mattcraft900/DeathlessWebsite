@@ -1,3 +1,20 @@
+/**
+ * Floating Edit FAB + Save/Cancel footer for entry pages (travelogue, character).
+ *
+ * Mental model
+ * ------------
+ * - Tap FAB → enter edit mode (or open login first).
+ * - Long-press FAB (~500ms) → account sheet (log out / change writer). Moving
+ *   the pointer cancels the long-press; suppressClick prevents the follow-up tap
+ *   from also entering edit mode.
+ * - In edit mode: FAB hides, footer shows. Header hide is driven by *typing*
+ *   (`beforeinput`/`input`), not mere focus — focus+hide used to race with
+ *   insert-at-point and falsely land caret at entry end. Leaving the block /
+ *   scrolling / keyboard closing (visualViewport grows) restores the header.
+ * - Scroll direction hides/shows the FAB/footer chrome (same pattern as many
+ *   mobile apps); near top of page always shows chrome.
+ */
+
 import {
   getCurrentWriter,
   logoutWriter,
@@ -10,6 +27,10 @@ import {
   saveAllEntryBlocks,
   setAllEntriesEditable,
 } from "./blocks.js";
+
+/* ---------------------------------------------------------- */
+/* -- Constants & module state                             -- */
+/* ---------------------------------------------------------- */
 
 const LONG_PRESS_MS = 500;
 const MOVE_CANCEL_PX = 12;
@@ -28,12 +49,23 @@ let lastViewportHeight = 0;
 let pressTimer = null;
 let pressStartX = 0;
 let pressStartY = 0;
+/** Set when long-press fires so the subsequent click is ignored. */
 let suppressClick = false;
 
+/* ---------------------------------------------------------- */
+/* -- Edit mode pub/sub                                    -- */
+/* ---------------------------------------------------------- */
+
+/** @returns {boolean} */
 export function isEditMode() {
   return editMode;
 }
 
+/**
+ * Subscribe to edit-mode changes.
+ * @param {(editMode: boolean) => void} fn
+ * @returns {() => void} unsubscribe
+ */
 export function onEditModeChange(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
@@ -52,6 +84,10 @@ function enterEditMode() {
   notifyEditModeChange();
 }
 
+/**
+ * Leave edit mode.
+ * @param {{ discard?: boolean }} [options] if discard, restore `_editBase` snapshots
+ */
 function exitEditMode({ discard = false } = {}) {
   if (!editMode) return;
   if (discard) {
@@ -63,6 +99,11 @@ function exitEditMode({ discard = false } = {}) {
   notifyEditModeChange();
 }
 
+/* ---------------------------------------------------------- */
+/* -- Chrome / header visibility                           -- */
+/* ---------------------------------------------------------- */
+
+/** FAB vs footer swap when entering/leaving edit mode; reset hide state. */
 function syncChromeVisibility() {
   if (!fabEl || !footerEl) return;
   fabEl.hidden = editMode;
@@ -74,6 +115,7 @@ function syncChromeVisibility() {
   setChromeHidden(false);
 }
 
+/** Slide FAB/footer off-screen while scrolling down. */
 function setChromeHidden(hidden) {
   if (chromeHidden === hidden) return;
   chromeHidden = hidden;
@@ -88,6 +130,7 @@ function showHeader() {
   header.classList.remove("edit-header-hidden");
 }
 
+/** Hide site header while typing in edit mode (mobile keyboard space). */
 function hideHeader() {
   if (!editMode) return;
   const header = document.getElementById("site-header");
@@ -109,6 +152,7 @@ function isEntryEditTarget(el) {
   );
 }
 
+/** Capture-phase: typing in a block → hide header, show footer. */
 function onEditTyping(e) {
   if (!editMode) return;
   if (!isEntryEditTarget(e.target)) return;
@@ -116,6 +160,7 @@ function onEditTyping(e) {
   revealEditChrome();
 }
 
+/** Outside edit mode, tapping near entries reveals the FAB if it was scrolled away. */
 function onEntryTap(e) {
   if (editMode) return;
   const t = e.target;
@@ -169,6 +214,10 @@ function onScroll() {
   });
 }
 
+/* ---------------------------------------------------------- */
+/* -- FAB gestures (tap vs long-press)                     -- */
+/* ---------------------------------------------------------- */
+
 function clearPressTimer() {
   if (pressTimer != null) {
     clearTimeout(pressTimer);
@@ -176,6 +225,7 @@ function clearPressTimer() {
   }
 }
 
+/** Short tap: enter edit (or login first). Ignored after a long-press. */
 async function handleEditClick(e) {
   if (suppressClick) {
     e?.preventDefault?.();
@@ -194,6 +244,10 @@ async function handleEditClick(e) {
   if (writer) enterEditMode();
 }
 
+/**
+ * Long-press on FAB → account modal.
+ * Change writer / logout discards any in-progress edit first.
+ */
 async function handleAccountLongPress() {
   // FAB is hidden in edit mode; exit defensively if that ever changes.
   if (editMode) exitEditMode({ discard: true });
@@ -242,6 +296,10 @@ function onFabPointerEnd() {
   clearPressTimer();
 }
 
+/* ---------------------------------------------------------- */
+/* -- Save / Cancel                                        -- */
+/* ---------------------------------------------------------- */
+
 async function handleSave() {
   if (!editMode) return;
   const saveBtn = footerEl?.querySelector(".edit-footer-save");
@@ -256,9 +314,14 @@ async function handleSave() {
 
 async function handleCancel() {
   if (!editMode) return;
+  // Confirm modal: filled "Cancel" = discard; "Keep Editing" = stay
   const discard = await showDiscardConfirmModal();
   if (discard) exitEditMode({ discard: true });
 }
+
+/* ---------------------------------------------------------- */
+/* -- Build & init                                         -- */
+/* ---------------------------------------------------------- */
 
 function wireFabGestures() {
   fabEl.addEventListener("pointerdown", onFabPointerDown);
@@ -266,6 +329,7 @@ function wireFabGestures() {
   fabEl.addEventListener("pointerup", onFabPointerEnd);
   fabEl.addEventListener("pointercancel", onFabPointerEnd);
   fabEl.addEventListener("click", handleEditClick);
+  // Prevent OS context menu from stealing the long-press path on mobile
   fabEl.addEventListener("contextmenu", (e) => {
     e.preventDefault();
   });
@@ -305,6 +369,7 @@ function buildChrome() {
 
 /**
  * Mount floating Edit FAB / Save-Cancel footer on entry pages.
+ * Idempotent if `#edit-chrome` already exists.
  */
 export function initEditChrome() {
   if (document.getElementById("edit-chrome")) return;

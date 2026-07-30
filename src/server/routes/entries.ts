@@ -1,3 +1,13 @@
+/**
+ * Entry + block API. GET returns an entry with ordered blocks.
+ * PUT /:id/blocks is optimistic concurrency: client sends expected `version`;
+ * mismatch → 409 with fresh `{ entry }` so the client can 3-way merge and retry.
+ *
+ * Non-admins may only edit/delete their own blocks, except the mid-split
+ * commentary case: shortening a foreign block to a prefix/suffix and inserting
+ * a same-author continuation (no id) in the same payload.
+ * Bodies are trimmed on write; `startsParagraph` is stored per block.
+ */
 import { Router } from "express";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "../../db/index.js";
@@ -67,6 +77,7 @@ entriesRouter.put("/:id/blocks", requireWriter, async (req: AuthedRequest, res, 
       return;
     }
 
+    // Stale client version → return current entry for client-side mergeBlocks()
     if (entry.version !== version) {
       const freshBlocks = await db
         .select(blockSelect)
@@ -187,6 +198,7 @@ entriesRouter.put("/:id/blocks", requireWriter, async (req: AuthedRequest, res, 
         }
       }
 
+      // Conditional bump: if another writer won the race, version won't match
       await tx
         .update(entries)
         .set({ version: entry.version + 1, updatedAt: new Date() })
@@ -194,6 +206,7 @@ entriesRouter.put("/:id/blocks", requireWriter, async (req: AuthedRequest, res, 
     });
 
     const [updated] = await db.select().from(entries).where(eq(entries.id, entry.id)).limit(1);
+    // Lost the version race inside the transaction → still 409 with fresh data
     if (!updated || updated.version !== version + 1) {
       const freshBlocks = await db
         .select(blockSelect)

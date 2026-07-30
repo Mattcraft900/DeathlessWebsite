@@ -1,6 +1,11 @@
+/* Google Fonts import */
 @import url('https://fonts.googleapis.com/css2?family=Indie+Flower&family=Kalam:wght@300;400;700&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Rye&display=swap');
 
+/* ---------------------------------------------------------- */
+/* -- Color & Typography variables                         -- */
+/* ---------------------------------------------------------- */
 :root {
+  /* Color Palette */
   --primary1-color: #640C00;
   --primary2-color: #614433;
   --secondary1-color: #7F5435;
@@ -9,9 +14,11 @@
   --accent-color: #e6cfa7;
   --offwhite: #fff2d3;
 
+  /* Fonts */
   --heading-font: Rye, "Times New Roman", serif;
   --paragraph-font: Montserrat, Helvetica, sans-serif;
 
+  /* Voice colors / fonts (stylized mode) */
   --lucy-color: #551b09;
   --lucy-font: "Indie Flower", Helvetica, sans-serif;
   --nemah-color: #5f163b;
@@ -25,6 +32,7 @@
   --dm-color: var(--paragraph-color-on-white);
   --dm-font: var(--paragraph-font);
 
+  /* Palette utilization */
   --headline-color-on-white: var(--primary1-color);
   --headline-color-on-color: var(--offwhite);
   --paragraph-color-on-white: black;
@@ -36,6 +44,10 @@
   --nav-hover-background-color: var(--primary1-color);
 }
 
+
+/* ---------------------------------------------------------- */
+/* -- Basic Reset / base stylings                          -- */
+/* ---------------------------------------------------------- */
 * {
   box-sizing: border-box;
   padding: 0;
@@ -75,6 +87,11 @@ h1, h2, h3, h4, h5, h6 {
   display: none !important;
 }
 
+
+/* ---------------------------------------------------------- */
+/* -- Header content                                       -- */
+/* ---------------------------------------------------------- */
+/* Header itself */
 header {
   background-color: var(--nav-background-color);
   color: var(--nav-link-color);
@@ -109,6 +126,7 @@ header.menu-open .menu-backdrop {
   background-color: var(--nav-background-color);
 }
 
+/* Mobile-only menu button */
 #menu-btn {
   background-color: inherit;
   border: none;
@@ -138,6 +156,7 @@ header.menu-open .menu-backdrop {
 .opened .bar2 { opacity: 0; }
 .opened .bar3 { transform: translate(0, -9px) rotate(45deg); }
 
+/* Nav menu/links (mobile: collapse under header) */
 .nav-collapse {
   position: absolute;
   top: 100%;
@@ -182,6 +201,10 @@ nav a {
   border-top: solid 3px var(--secondary1-color);
 }
 
+
+/* ---------------------------------------------------------- */
+/* -- Auth buttons & modals                                -- */
+/* ---------------------------------------------------------- */
 .auth-btn {
   background: var(--accent-color);
   color: var(--primary1-color);
@@ -300,7 +323,10 @@ nav a {
   margin-top: 0.5em;
 }
 
-/* Floating edit chrome (entry pages) */
+
+/* ---------------------------------------------------------- */
+/* -- Edit chrome (FAB / Save-Cancel footer)               -- */
+/* ---------------------------------------------------------- */
 .edit-fab,
 .edit-footer {
   transition: transform 0.25s ease, opacity 0.25s ease;
@@ -321,23 +347,6 @@ nav a {
   transform: translateY(100%);
   opacity: 0;
   pointer-events: none;
-}
-
-/* Mobile: tuck sticky header away while the soft keyboard is up */
-@media screen and (max-width: 599px) {
-  #site-header {
-    transition: transform 0.25s ease, opacity 0.25s ease;
-  }
-
-  #site-header.edit-header-hidden {
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: 0;
-    transform: translateY(-100%);
-    opacity: 0;
-    pointer-events: none;
-  }
 }
 
 .edit-fab {
@@ -431,10 +440,15 @@ nav a {
   outline: none;
 }
 
+/* Room for the fixed Save/Cancel bar while editing */
 body.edit-mode {
   padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
 }
 
+
+/* ---------------------------------------------------------- */
+/* -- Page titles / section chrome                         -- */
+/* ---------------------------------------------------------- */
 .page-title {
   font-size: clamp(6cqw, 3em, 12cqw);
   font-weight: normal;
@@ -455,6 +469,10 @@ hr {
   margin: 20px auto;
 }
 
+
+/* ---------------------------------------------------------- */
+/* -- Character cards / galleries                          -- */
+/* ---------------------------------------------------------- */
 .character-gallery {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -490,6 +508,10 @@ hr {
   text-align: center;
 }
 
+
+/* ---------------------------------------------------------- */
+/* -- Entry blocks & voice styles                          -- */
+/* ---------------------------------------------------------- */
 .entry-blocks {
   text-align: justify;
   line-height: 1.6;
@@ -500,6 +522,7 @@ hr {
   white-space: pre-wrap;
 }
 
+/* Zero-height marker between paragraphs (startsParagraph on next block) */
 .entry-para-break {
   display: block;
   margin-top: 1em;
@@ -521,6 +544,7 @@ hr {
   border-radius: 2px;
 }
 
+/* stylized */
 .voice-lucy.stylized,
 .entry-block.voice-lucy.stylized {
   font-family: var(--lucy-font);
@@ -559,6 +583,7 @@ hr {
   font-weight: 500;
 }
 
+/* simple */
 .voice-lucy.simple,
 .entry-block.voice-lucy.simple {
   font-family: var(--paragraph-font);
@@ -578,6 +603,10 @@ hr {
   font-style: italic;
 }
 
+
+/* ---------------------------------------------------------- */
+/* -- Footer / Misc.                                       -- */
+/* ---------------------------------------------------------- */
 footer {
   background-color: var(--offwhite);
 }
@@ -592,11 +621,40 @@ footer {
   text-decoration: underline;
 }
 
+
+/* ############++++++++++--------------++++++++++############ */
+/* ##                  MOBILE FORMATTING                   ## */
+/* ############++++++++++--------------++++++++++############ */
+
+/* Tuck sticky header away while the soft keyboard is up (edit mode) */
+@media screen and (max-width: 599px) {
+  #site-header {
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+
+  #site-header.edit-header-hidden {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+
+/* ############++++++++++--------------++++++++++############ */
+/* ##                  DESKTOP FORMATTING                  ## */
+/* ############++++++++++--------------++++++++++############ */
+
 @media screen and (min-width: 600px) {
+  /* Basics */
   * {
     font-size: 24px;
   }
 
+  /* Header — always-visible row nav */
   #menu-btn {
     display: none;
   }
@@ -644,10 +702,12 @@ footer {
     background-color: var(--nav-hover-background-color);
   }
 
+  /* Main */
   main {
     padding: 0 10% 100px;
   }
 
+  /* Gallery */
   .character-gallery {
     grid-template-columns: repeat(5, 1fr);
     column-gap: 10px;

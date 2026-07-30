@@ -1,7 +1,21 @@
+/**
+ * Travelogue page: paginated sessions, infinite scroll, Jump-to TOC, format
+ * controls, admin "new session", back-to-top, and deep-link hashes.
+ *
+ * Sessions load in pages (`limit=3`) with a cursor (`after`). Jump-to may need
+ * a session that isn't loaded yet — `ensureEntryInDom` keeps appending until
+ * the target id appears or there is no next page. Deep links (`#entry-…`) use
+ * the same path after first paint.
+ */
+
 import { apiGet, apiPost } from "./api.js";
 import { getCurrentWriter, initAuth, onAuthChange } from "./auth-ui.js";
 import { applyFormatToBlocks, renderEntryBlocks } from "./blocks.js";
 import { initEditChrome, isEditMode } from "./edit-chrome.js";
+
+/* ---------------------------------------------------------- */
+/* -- Page elements & state                                -- */
+/* ---------------------------------------------------------- */
 
 const sessionsContainer = document.getElementById("travelogue-sessions");
 const loadMoreBtn = document.getElementById("load-more-btn");
@@ -11,6 +25,7 @@ const jumpToggle = document.getElementById("jump-toggle");
 const adminPanel = document.getElementById("admin-session-panel");
 const newSessionForm = document.getElementById("new-session-form");
 
+/** Wait after closing the jump menu before scrolling (CSS transition). */
 const JUMP_COLLAPSE_MS = 320;
 
 let nextCursor = null;
@@ -19,10 +34,15 @@ let loadPromise = null;
 let tocData = null;
 let sentinelObserver = null;
 
+/** @returns {"simple"|"stylized"} */
 function getFormatMode() {
   const dropdown = document.getElementById("format-dropdown");
   return dropdown?.value === "simple" ? "simple" : "stylized";
 }
+
+/* ---------------------------------------------------------- */
+/* -- Session / entry DOM                                  -- */
+/* ---------------------------------------------------------- */
 
 function renderSessionTitle(session) {
   const h = document.createElement("h3");
@@ -49,7 +69,7 @@ function renderGameDateEntry(chunk, editable) {
   if (heading) {
     wrap.appendChild(heading);
   } else {
-    // No visible heading — anchor the chunk wrapper itself
+    // No visible heading — anchor the chunk wrapper itself for Jump-to / hashes
     wrap.id = `entry-${chunk.id}`;
   }
 
@@ -77,6 +97,10 @@ function renderSession(session, editable) {
   return block;
 }
 
+/* ---------------------------------------------------------- */
+/* -- Pagination / infinite scroll                         -- */
+/* ---------------------------------------------------------- */
+
 function setupInfiniteScroll() {
   const sentinel = document.getElementById("scroll-sentinel");
   if (!sentinel) return;
@@ -93,6 +117,12 @@ function setupInfiniteScroll() {
   sentinelObserver.observe(sentinel);
 }
 
+/**
+ * Fetch a page of sessions. Concurrent callers await the in-flight promise
+ * instead of starting a second request.
+ *
+ * @param {boolean} [append=false] false = replace list; true = append next page
+ */
 async function loadSessions(append = false) {
   if (loading) {
     await loadPromise;
@@ -133,7 +163,15 @@ async function loadSessions(append = false) {
   await loadPromise;
 }
 
-/** Keep loading pages until the jump target exists (or nothing left to load). */
+/* ---------------------------------------------------------- */
+/* -- Jump-to / deep links                                 -- */
+/* ---------------------------------------------------------- */
+
+/**
+ * Keep loading pages until the jump target exists (or nothing left to load).
+ * @param {string} domId e.g. `entry-<uuid>`
+ * @returns {Promise<HTMLElement|null>}
+ */
 async function ensureEntryInDom(domId) {
   for (;;) {
     const el = document.getElementById(domId);
@@ -147,6 +185,7 @@ async function ensureEntryInDom(domId) {
   }
 }
 
+/** @returns {number} ms to wait for collapse animation (0 if already closed) */
 function collapseJumpMenu() {
   if (!jumpSidebar?.classList.contains("is-open")) return 0;
   jumpSidebar.classList.remove("is-open");
@@ -154,6 +193,7 @@ function collapseJumpMenu() {
   return JUMP_COLLAPSE_MS;
 }
 
+/** Prefer scrolling to a heading inside a wrapper, not the wrapper top alone. */
 function scrollTargetFor(el) {
   if (
     el.matches(".session-title, .game-date-heading") ||
@@ -164,6 +204,11 @@ function scrollTargetFor(el) {
   return el.querySelector(".session-title, .game-date-heading") || el;
 }
 
+/**
+ * Collapse jump menu, load-until-found, scroll, update hash.
+ * @param {string} domId
+ * @returns {Promise<boolean>}
+ */
 async function jumpToDomId(domId) {
   const waitCollapse = collapseJumpMenu();
   const el = await ensureEntryInDom(domId);
@@ -185,7 +230,7 @@ function renderJumpToList() {
       `<li class="jump-session"><a href="#entry-${session.id}">${escapeHtml(session.title || "Session")}</a></li>`,
     );
     for (const d of session.dates || []) {
-      // Prologue is a session heading only in the Jump to UX
+      // Prologue is a session heading only in the Jump-to UX (skip duplicate date row)
       if (d.dateKey === "prologue") continue;
       const label = d.title || d.dateKey;
       items.push(
@@ -203,6 +248,10 @@ function escapeHtml(str) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 }
+
+/* ---------------------------------------------------------- */
+/* -- UI chrome (back-to-top, toggles, format)             -- */
+/* ---------------------------------------------------------- */
 
 function setupBackToTop() {
   const btn = document.getElementById("back-to-top");
@@ -282,6 +331,10 @@ async function refreshToc() {
   tocData = await apiGet("/travelogue/toc");
   renderJumpToList();
 }
+
+/* ---------------------------------------------------------- */
+/* -- Page boot                                            -- */
+/* ---------------------------------------------------------- */
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initAuth();

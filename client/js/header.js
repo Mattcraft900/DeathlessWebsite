@@ -1,3 +1,8 @@
+/**
+ * Site header + hamburger nav (every page). Builds DOM into `#site-header`,
+ * then kicks off `initAuth()` so the session cookie is restored early.
+ */
+
 import { initAuth } from "./auth-ui.js";
 
 function buildHeader() {
@@ -56,6 +61,7 @@ function buildHeader() {
   });
 
   // If the viewport crosses into desktop layout, force the menu closed
+  // (desktop nav is always visible — don't leave mobile-open state stuck).
   const desktopMq = window.matchMedia("(min-width: 600px)");
   const onViewportChange = () => {
     if (desktopMq.matches) setMenuOpen(false);

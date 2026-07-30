@@ -1,3 +1,7 @@
+/**
+ * Fractional indexing helpers for insert-between ordering without renumbering
+ * the whole list. DB columns use COLLATE "C" so string order matches byte order.
+ */
 import { generateKeyBetween } from "fractional-indexing";
 
 /** Generate n evenly spaced fractional ranks starting after `after` (or from scratch). */

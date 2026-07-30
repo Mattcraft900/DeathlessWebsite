@@ -1,9 +1,15 @@
+/**
+ * Character detail page: load by slug from the URL, render stats + bio blocks,
+ * format dropdown, and re-fetch on auth change when not mid-edit.
+ */
+
 import { apiGet } from "./api.js";
 import { initAuth, onAuthChange } from "./auth-ui.js";
 import { applyFormatToBlocks, renderEntryBlocks } from "./blocks.js";
 import { attachDetailPortrait } from "./character-images.js";
 import { initEditChrome, isEditMode } from "./edit-chrome.js";
 
+/** Format class/level rows for display (e.g. "Wizard 5 / Rogue 2"). */
 function classesToString(classes) {
   if (!classes?.length) return "";
   return classes
@@ -18,6 +24,7 @@ function classesToString(classes) {
     .join(" / ");
 }
 
+/** @returns {string|null} slug after `/characters/` in the path */
 function getSlugFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
   const idx = parts.indexOf("characters");
@@ -91,6 +98,7 @@ function renderCharacter(main, data) {
     addStat("Player", character.playerName);
     addStat("Class", classesToString(character.classes));
   } else if (character.category === "opc") {
+    // opc = other player character (former PCs / guest PCs)
     addStat("Original Player", character.playerName);
     if (character.locationHome) addStat("Home", character.locationHome);
     if (character.locationLast) addStat("Last Seen", character.locationLast);
@@ -125,6 +133,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderCharacter(main, data);
 
     onAuthChange(() => {
+      // Don't wipe in-progress bio edits when auth refreshes
       if (isEditMode()) return;
       apiGet(`/characters/${encodeURIComponent(slug)}`).then((fresh) => {
         renderCharacter(main, fresh);

@@ -1,12 +1,31 @@
+/**
+ * Writer session UI: cookie restore, login/logout, account + discard modals.
+ *
+ * `currentWriter` is the in-memory session mirror of `/api/auth/me`. Pages call
+ * `initAuth()` once on load; `onAuthChange` lets galleries / travelogue refresh
+ * when login state changes. Modal promises settle once (cancel vs submit) so
+ * callers don't double-resolve.
+ */
+
 import { apiGet, apiPost } from "./api.js";
+
+/* ---------------------------------------------------------- */
+/* -- Session state                                        -- */
+/* ---------------------------------------------------------- */
 
 let currentWriter = null;
 const listeners = new Set();
 
+/** @returns {object|null} logged-in writer or null */
 export function getCurrentWriter() {
   return currentWriter;
 }
 
+/**
+ * Subscribe to auth changes (login / logout / cookie restore).
+ * @param {(writer: object|null) => void} fn
+ * @returns {() => void} unsubscribe
+ */
 export function onAuthChange(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
@@ -17,11 +36,19 @@ function notifyAuthChange() {
   document.body.classList.toggle("logged-in", Boolean(currentWriter));
 }
 
+/* ---------------------------------------------------------- */
+/* -- Generic modal helper                                 -- */
+/* ---------------------------------------------------------- */
+
 function closeModal() {
   const backdrop = document.querySelector(".auth-modal-backdrop");
   if (backdrop) backdrop.remove();
 }
 
+/**
+ * Build a simple form modal. `onSubmit` may throw to keep the modal open and
+ * show `errorEl`. Backdrop click / Cancel call `onCancel`.
+ */
 function showModal(title, fields, onSubmit, { onCancel } = {}) {
   closeModal();
   const backdrop = document.createElement("div");
@@ -108,6 +135,10 @@ function showModal(title, fields, onSubmit, { onCancel } = {}) {
   form.querySelector("input, select")?.focus();
 }
 
+/* ---------------------------------------------------------- */
+/* -- Login / logout                                       -- */
+/* ---------------------------------------------------------- */
+
 /**
  * Opens the writer + PIN login modal.
  * @returns {Promise<object|null>} writer on success, null if cancelled
@@ -179,6 +210,10 @@ export async function logoutWriter() {
   notifyAuthChange();
 }
 
+/* ---------------------------------------------------------- */
+/* -- Account & discard confirm                            -- */
+/* ---------------------------------------------------------- */
+
 /**
  * Account sheet opened via long-press on the Edit FAB.
  * @returns {Promise<"logout"|"change"|"cancel">}
@@ -232,6 +267,8 @@ export function showAccountModal() {
 /**
  * Confirm dialog with equal-width actions.
  * Destructive action is the filled "Cancel" (discard); "Keep Editing" is backgroundless.
+ * Wording matches the footer Cancel button so writers aren't surprised.
+ *
  * @returns {Promise<boolean>} true if user chose to discard (Cancel), false to keep editing
  */
 export function showDiscardConfirmModal() {
@@ -272,9 +309,17 @@ export function showDiscardConfirmModal() {
   });
 }
 
+/* ---------------------------------------------------------- */
+/* -- Cookie session restore                               -- */
+/* ---------------------------------------------------------- */
+
 let authReady = null;
 
-/** Restores the cookie session once per page load. Safe to call multiple times. */
+/**
+ * Restores the cookie session once per page load. Safe to call multiple times
+ * (returns the same promise).
+ * @returns {Promise<object|null>}
+ */
 export function initAuth() {
   if (!authReady) {
     authReady = (async () => {

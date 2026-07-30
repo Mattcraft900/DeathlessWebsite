@@ -1,6 +1,11 @@
+/**
+ * Home page: load party characters into the welcome gallery.
+ */
+
 import { apiGet } from "./api.js";
 import { smallSrc } from "./character-images.js";
 
+/** Helper for building a character card link. */
 function buildCharacterCard(character) {
   const slug = character.slug;
   return `<a href="/characters/${slug}"><div class="character-card ${character.category}-character-card">

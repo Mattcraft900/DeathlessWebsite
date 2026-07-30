@@ -1,12 +1,58 @@
+/**
+ * Multi-voice entry editor (travelogue chunks + character bios).
+ *
+ * Mental model
+ * ------------
+ * An entry is an ordered list of *voice blocks* (spans). Each block belongs to
+ * one writer, has trimmed `body` text in the DB, a fractional `sortRank`, and a
+ * `startsParagraph` flag. Visual paragraphs are NOT separate DOM containers —
+ * they are rebuilt client-side between blocks:
+ *   - next block has startsParagraph → insert `.entry-para-break`
+ *   - otherwise → insert a single space text node
+ * So "paragraph" is a run of blocks until the next startsParagraph flag.
+ *
+ * Editing modes (when `editable` + logged-in writer):
+ *   - Own voice (or admin on any voice) → contentEditable; Enter handled here
+ *   - Foreign voice → click/tap inserts your empty commentary block at that point
+ *   - Clicks on container padding / gutters / para gaps → nearest sensible edge
+ *
+ * Save contract:
+ *   - `_editBase` snapshots blocks+version when edit mode starts (merge base)
+ *   - Local DOM → gatherBlocksFromDom (trim bodies, fold unsaved same-voice runs)
+ *   - PUT with expected `version`; on 409, 3-way merge(base, local, remote) and retry
+ *
+ * Mid-paragraph Enter is allowed for everyone (honor system). Boundary Enter still
+ * only flips startsParagraph flags so writers can promote an inline aside to its
+ * own paragraph without splitting text.
+ */
+
 import { generateKeyBetween } from "fractional-indexing";
 import { apiPut } from "./api.js";
 import { getCurrentWriter } from "./auth-ui.js";
 
+/* ---------------------------------------------------------- */
+/* -- Format mode                                          -- */
+/* ---------------------------------------------------------- */
+
+/** @returns {"simple"|"stylized"} current formatting dropdown value (default stylized) */
 function getFormatMode() {
   const dropdown = document.getElementById("format-dropdown");
   return dropdown?.value === "simple" ? "simple" : "stylized";
 }
 
+/* ---------------------------------------------------------- */
+/* -- Render entry blocks                                  -- */
+/* ---------------------------------------------------------- */
+
+/**
+ * Wipe and rebuild an entry's block DOM from an entry payload.
+ * When editable and a writer is logged in, also wires edit handlers and stores
+ * `_editBase` for later discard / 3-way merge on conflict.
+ *
+ * @param {HTMLElement} container target `.entry-blocks` element
+ * @param {{ id: string, version?: number, blocks?: object[] }} entry
+ * @param {{ editable?: boolean }} [options]
+ */
 export function renderEntryBlocks(container, entry, { editable = false } = {}) {
   container.innerHTML = "";
   container.classList.add("entry-blocks");
@@ -25,6 +71,7 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
     setStartsParagraph(span, Boolean(block.startsParagraph));
     span.textContent = block.body;
 
+    // Admin can edit any voice; everyone else only their own writerId.
     const canEdit =
       editable && writer && (writer.isAdmin || writer.id === block.writerId);
     span.contentEditable = canEdit ? "true" : "false";
@@ -32,6 +79,7 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
     if (canEdit) {
       wireOwnEditable(span);
     } else if (editable && writer) {
+      // Foreign block: click inserts commentary at the tapped offset.
       span.tabIndex = -1;
       span.title = "Click where you want to insert your commentary";
       span.addEventListener("click", (e) => {
@@ -46,6 +94,7 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
   refreshBlockSeparators(container);
 
   if (editable && writer) {
+    // Snapshot at edit-enter time: merge base for concurrent saves + discard.
     container._editBase = {
       version: entry.version,
       blocks: (entry.blocks || []).map((b) => ({
@@ -58,8 +107,9 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
       })),
     };
 
-    // Ignore container "padding" clicks that started on a block (mobile Chrome
-    // often retargets the delayed click onto the container after focus/layout).
+    // Mobile Chrome often fires the delayed "click" on the *container* after a
+    // tap that started on a block (focus/layout retarget). Without this guard,
+    // we'd treat that as a padding click and jump the caret elsewhere.
     let pointerDownOnBlock = false;
     container.onpointerdown = (e) => {
       const t = e.target;
@@ -82,19 +132,32 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
   }
 }
 
+/* ---------------------------------------------------------- */
+/* -- Paragraph flags & separators                         -- */
+/* ---------------------------------------------------------- */
+
+/** @param {Element|null|undefined} el */
 function isEntryBlock(el) {
   return el instanceof HTMLElement && el.classList.contains("entry-block");
 }
 
+/** @param {HTMLElement|null|undefined} el */
 function readStartsParagraph(el) {
   return el?.dataset?.startsParagraph === "true";
 }
 
+/**
+ * Persist startsParagraph on the element (omit attribute when false so the DOM
+ * stays clean and serialize reads stay boolean-safe).
+ * @param {HTMLElement} el
+ * @param {boolean} value
+ */
 function setStartsParagraph(el, value) {
   if (value) el.dataset.startsParagraph = "true";
   else delete el.dataset.startsParagraph;
 }
 
+/** @returns {HTMLSpanElement} zero-height break between paragraphs */
 function createParaBreak() {
   const el = document.createElement("span");
   el.className = "entry-para-break";
@@ -102,7 +165,16 @@ function createParaBreak() {
   return el;
 }
 
-/** Rebuild space / paragraph separators between entry-block children. */
+/**
+ * Rebuild space / paragraph separators between entry-block children.
+ *
+ * Bodies in the DB are edge-trimmed. Display spacing is entirely client-side:
+ * strip all non-block children, then re-insert either a space or a para-break
+ * before each block after the first. Call this after any insert/remove/split
+ * that changes block order or startsParagraph flags.
+ *
+ * @param {HTMLElement|null|undefined} container
+ */
 function refreshBlockSeparators(container) {
   if (!container) return;
   const blocks = [...container.children].filter(isEntryBlock);
@@ -119,6 +191,13 @@ function refreshBlockSeparators(container) {
   }
 }
 
+/**
+ * Walk previous/next element siblings until the next `.entry-block`
+ * (skips spaces and `.entry-para-break`).
+ * @param {HTMLElement} span
+ * @param {"prev"|"next"} direction
+ * @returns {HTMLElement|null}
+ */
 function blockSibling(span, direction) {
   let el = direction === "prev" ? span.previousElementSibling : span.nextElementSibling;
   while (el && !isEntryBlock(el)) {
@@ -127,11 +206,18 @@ function blockSibling(span, direction) {
   return isEntryBlock(el) ? el : null;
 }
 
+/** @param {HTMLElement} container @returns {HTMLElement[]} */
 function entryBlocksInOrder(container) {
   return [...container.children].filter(isEntryBlock);
 }
 
-/** Paragraph role of a block within its entry: only | first | last | middle */
+/**
+ * Where this block sits inside its visual paragraph (run until next startsParagraph).
+ * Used by Enter handling to decide "insert empty para above" vs "split mid-text".
+ *
+ * @param {HTMLElement} span
+ * @returns {"only"|"first"|"last"|"middle"}
+ */
 function paragraphRole(span) {
   const container = span.parentElement;
   if (!container) return "only";
@@ -151,19 +237,30 @@ function paragraphRole(span) {
   return "middle";
 }
 
+/* ---------------------------------------------------------- */
+/* -- Own-block helpers (empty / continuation)             -- */
+/* ---------------------------------------------------------- */
+
+/** @param {Element} el @param {{ id: string }} writer */
 function isOwnEditableBlock(el, writer) {
   return isEntryBlock(el) && el.isContentEditable && el.dataset.writerId === writer.id;
 }
 
+/** @param {HTMLElement} el */
 function isBlank(el) {
   return !(el.textContent ?? "").trim();
 }
 
+/** Toggle `data-empty` for CSS placeholders on blank editable blocks. */
 function syncEmptyAttr(el) {
   if (isBlank(el)) el.dataset.empty = "true";
   else delete el.dataset.empty;
 }
 
+/**
+ * Unsaved foreign "second half" created by a mid-split commentary insert.
+ * Marked so blur-discard can rejoin it if the user never typed in the middle.
+ */
 function isUnsavedContinuation(el, writerId) {
   return (
     isEntryBlock(el) &&
@@ -174,7 +271,17 @@ function isUnsavedContinuation(el, writerId) {
   );
 }
 
-/** Remove empty own blocks on blur; rejoin unused mid-split foreign halves. */
+/**
+ * On blur of an empty own block: remove it.
+ * Special case — mid-split that was abandoned: [foreign before][empty own][continuation]
+ * → glue foreign halves back together and drop the empty insert.
+ *
+ * Do NOT rejoin ordinary neighbors when deleting a normal middle empty block —
+ * concatenating foreign text onto another writer's persisted id would rewrite
+ * their body on Save and get a 403 from the server.
+ *
+ * @param {HTMLElement} span
+ */
 function discardIfEmpty(span) {
   if (!span.isConnected || !isBlank(span)) {
     syncEmptyAttr(span);
@@ -199,12 +306,24 @@ function discardIfEmpty(span) {
 
   const wasFirst = !prev;
   span.remove();
+  // If we removed the first block of the entry, the new first shouldn't keep
+  // a stale "starts paragraph" from being the old second block's flag alone —
+  // first block of the whole entry is never a "break after previous".
   if (wasFirst && next) {
     setStartsParagraph(next, false);
   }
   refreshBlockSeparators(container);
 }
 
+/* ---------------------------------------------------------- */
+/* -- Enter / paragraph splits                             -- */
+/* ---------------------------------------------------------- */
+
+/**
+ * Character offset of the caret inside a block's text content.
+ * @param {HTMLElement} span
+ * @returns {number}
+ */
 function getCaretOffsetInBlock(span) {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) return 0;
@@ -217,6 +336,24 @@ function getCaretOffsetInBlock(span) {
   return pre.toString().length;
 }
 
+/**
+ * Custom Enter for editable blocks (preventDefault — no browser <br>/divs).
+ *
+ * Decision tree:
+ * 1. Caret at end + next block is inline → mark next startsParagraph (promote aside)
+ * 2. Caret at start + this block is inline → mark this startsParagraph
+ * 3. First-in-paragraph + caret at 0 → insert empty own paragraph *above*
+ * 4. Otherwise → split text at caret; new block starts a paragraph
+ *
+ * Voice preservation: when admin splits a Nemah block, the new half stays Nemah
+ * (same writerId / voice class), not Lucy. Handler runs for any contentEditable
+ * block while a session writer exists — including admin editing foreign voices —
+ * so we never fall through to native Enter that would vanish on save.
+ *
+ * @param {HTMLElement} span
+ * @param {object} writer current session writer (may be admin)
+ * @param {KeyboardEvent} e
+ */
 function handleEnterInOwnBlock(span, writer, e) {
   e.preventDefault();
 
@@ -229,22 +366,23 @@ function handleEnterInOwnBlock(span, writer, e) {
   const prev = blockSibling(span, "prev");
   const next = blockSibling(span, "next");
 
-  // Boundary fix: Enter at end → following block starts a paragraph.
-  // (e.g. Lucy at end of her text before an inline Nemah that should be its own para)
+  // Boundary: Enter at end → following block starts a paragraph.
+  // Example: Lucy at end of her text before an inline Nemah that should be its own para.
   if (atEnd && next && !readStartsParagraph(next)) {
     setStartsParagraph(next, true);
     refreshBlockSeparators(container);
     return;
   }
 
-  // Boundary fix: Enter at start → this block starts a paragraph.
+  // Boundary: Enter at start → this block starts a paragraph.
   if (atStart && prev && !readStartsParagraph(span)) {
     setStartsParagraph(span, true);
     refreshBlockSeparators(container);
     return;
   }
 
-  // First-in-paragraph at caret 0: insert an empty own paragraph above.
+  // First-in-paragraph at caret 0: insert an empty own paragraph above
+  // (rather than splitting this block into before/after with after keeping the rest).
   if (role === "first" && atStart) {
     const formatMode = getFormatMode();
     const empty = document.createElement("span");
@@ -265,7 +403,7 @@ function handleEnterInOwnBlock(span, writer, e) {
     return;
   }
 
-  // Split at caret into current + new paragraph block.
+  // Mid-text (or only-block) split: before stays here; after becomes a new paragraph.
   // Keep the edited block's voice (admin splitting Nemah stays Nemah).
   const before = text.slice(0, offset);
   const after = text.slice(offset);
@@ -291,6 +429,10 @@ function handleEnterInOwnBlock(span, writer, e) {
   focusBlockCaret(neu, false);
 }
 
+/**
+ * Wire input / Enter / blur / edge-pointer behavior for an editable block.
+ * @param {HTMLElement} span
+ */
 function wireOwnEditable(span) {
   syncEmptyAttr(span);
   span.addEventListener("input", () => syncEmptyAttr(span));
@@ -301,8 +443,9 @@ function wireOwnEditable(span) {
     if (!writer) return;
     handleEnterInOwnBlock(span, writer, e);
   });
-  // Empty remainder of last line before a paragraph break (often hits the
-  // editable span itself, especially for admin/Lucy) → caret at end.
+  // Empty remainder of the last line before a paragraph break often hits the
+  // editable span itself (especially admin/Lucy). Treat that as "caret at end"
+  // instead of letting the browser put the caret at the start of the next para.
   span.addEventListener("pointerdown", (e) => {
     if (e.button != null && e.button !== 0) return;
     const next = blockSibling(span, "next");
@@ -318,12 +461,24 @@ function wireOwnEditable(span) {
   });
 }
 
+/* ---------------------------------------------------------- */
+/* -- Geometry / caret placement                           -- */
+/* ---------------------------------------------------------- */
+
+/** Euclidean distance from a point to the nearest edge of a rect (0 if inside). */
 function distanceToRect(x, y, rect) {
   const dx = x < rect.left ? rect.left - x : x > rect.right ? x - rect.right : 0;
   const dy = y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0;
   return Math.hypot(dx, dy);
 }
 
+/**
+ * Focus a block and place the caret at start or end of its text.
+ * Re-applies after rAF because some browsers reset caret to 0 on focus.
+ *
+ * @param {HTMLElement} span
+ * @param {boolean} atEnd
+ */
 function focusBlockCaret(span, atEnd) {
   span.focus();
   const place = () => {
@@ -348,8 +503,14 @@ function focusBlockCaret(span, atEnd) {
 }
 
 /**
- * Nearest character offset in a span for a client point (works when
- * caretRangeFromPoint is missing or unreliable, e.g. mobile Chrome).
+ * Nearest character offset in a span for a client point.
+ * Binary-searches range rects — used when caretRangeFromPoint is missing or
+ * unreliable (notably mobile Chrome, which used to default wrongly to end).
+ *
+ * @param {HTMLElement} span
+ * @param {number} clientX
+ * @param {number} clientY
+ * @returns {number}
  */
 function offsetFromPointInSpan(span, clientX, clientY) {
   const textNode = [...span.childNodes].find((n) => n.nodeType === Node.TEXT_NODE);
@@ -384,10 +545,15 @@ function offsetFromPointInSpan(span, clientX, clientY) {
 }
 
 /**
- * Resolve where in a foreign block a click/tap landed.
- * Uses geometry (not caretRangeFromPoint) because mobile Chrome often fails
- * open and previously defaulted to the end of the block. Sibling-edge snap
- * only applies in the gutter — never while the tap is inside this span.
+ * Resolve where in a foreign block a click/tap landed for commentary insert.
+ * Uses geometry (not caretRangeFromPoint). Sibling-edge snap only applies in
+ * the *gutter* (closer to a neighbor than to this block) — never while the tap
+ * is inside this span's box. That avoids "click near border → wrong end of entry".
+ *
+ * @param {HTMLElement} foreignSpan
+ * @param {number} clientX
+ * @param {number} clientY
+ * @returns {number} character offset
  */
 function resolveClickOffset(foreignSpan, clientX, clientY) {
   const text = foreignSpan.textContent ?? "";
@@ -414,6 +580,15 @@ function resolveClickOffset(foreignSpan, clientX, clientY) {
   return offset;
 }
 
+/* ---------------------------------------------------------- */
+/* -- Insert own / commentary blocks                       -- */
+/* ---------------------------------------------------------- */
+
+/**
+ * Insert an empty own-voice block after `afterSpan`, or focus an existing one.
+ * @param {HTMLElement} afterSpan
+ * @param {object} writer
+ */
 function insertOwnBlockAfter(afterSpan, writer) {
   const next = blockSibling(afterSpan, "next");
   if (isOwnEditableBlock(next, writer)) {
@@ -438,6 +613,11 @@ function insertOwnBlockAfter(afterSpan, writer) {
   focusBlockCaret(span, false);
 }
 
+/**
+ * Insert an empty own-voice block before `beforeSpan`, or focus an existing one.
+ * @param {HTMLElement} beforeSpan
+ * @param {object} writer
+ */
 function insertOwnBlockBefore(beforeSpan, writer) {
   const prev = blockSibling(beforeSpan, "prev");
   if (isOwnEditableBlock(prev, writer)) {
@@ -462,7 +642,17 @@ function insertOwnBlockBefore(beforeSpan, writer) {
   focusBlockCaret(span, false);
 }
 
-/** Split a foreign block at the click point and insert an empty own-voice block between. */
+/**
+ * Split a foreign block at the click point and insert an empty own-voice block
+ * between the halves. Edge clicks next to an existing own block reuse that block
+ * instead of stacking empties. Mid-split marks the after-half as an unsaved
+ * continuation so blur can undo an abandoned insert.
+ *
+ * @param {HTMLElement} foreignSpan
+ * @param {object} writer
+ * @param {number} clientX
+ * @param {number} clientY
+ */
 function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
   const text = foreignSpan.textContent ?? "";
   const offset = resolveClickOffset(foreignSpan, clientX, clientY);
@@ -537,10 +727,18 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
   focusBlockCaret(own, false);
 }
 
+/* ---------------------------------------------------------- */
+/* -- Container / gutter / paragraph-gap clicks            -- */
+/* ---------------------------------------------------------- */
+
 /**
  * On-screen start/end anchors for a block: left-center of the first line
- * fragment and right-center of the last (not the fat union box). For a
- * one-line block these are opposite ends of the same line box.
+ * fragment and right-center of the last (not the fat union bounding box).
+ * For a one-line block these are opposite ends of the same line box.
+ * Using real glyph-line edges (getClientRects) avoids AABB "nearest border"
+ * bugs that sent the caret to the wrong block or the end of the entry.
+ *
+ * @param {HTMLElement} span
  */
 function blockEdgeAnchors(span) {
   const rects = span.getClientRects();
@@ -565,10 +763,12 @@ function distanceToPoint(x, y, p) {
   return Math.hypot(x - p.x, y - p.y);
 }
 
+/** True if clientY overlaps a rect's vertical span (with slop). */
 function yOverlapsRect(clientY, rect, slop = 14) {
   return clientY >= rect.top - slop && clientY <= rect.bottom + slop;
 }
 
+/** True if (x,y) lies inside any of the element's glyph line boxes. */
 function pointInGlyphBoxes(el, x, y) {
   for (const r of el.getClientRects()) {
     if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return true;
@@ -576,7 +776,11 @@ function pointInGlyphBoxes(el, x, y) {
   return false;
 }
 
-/** Place caret / insert at the end of a block (paragraph-above helper). */
+/**
+ * Place caret / insert at the end of a block (paragraph-above helper).
+ * @param {HTMLElement} above
+ * @param {object} writer
+ */
 function placeAtBlockEnd(above, writer) {
   if (above.isContentEditable) {
     focusBlockCaret(above, true);
@@ -593,7 +797,16 @@ function placeAtBlockEnd(above, writer) {
 /**
  * If the click is in a paragraph gap (or last-line remainder above a break),
  * return the last block of the paragraph above; otherwise null.
- * Does not match same-paragraph inter-block spaces.
+ * Does not match same-paragraph inter-block spaces (those use edge candidates).
+ *
+ * Ideal UX: clicking the empty space between paragraphs (including the empty
+ * rest of the last line above the break) puts the caret at the end of the
+ * paragraph above — not at some distant "nearest border".
+ *
+ * @param {HTMLElement[]} blocks
+ * @param {number} clientX
+ * @param {number} clientY
+ * @returns {HTMLElement|null}
  */
 function resolveParaGapAbove(blocks, clientX, clientY) {
   for (let i = 1; i < blocks.length; i++) {
@@ -620,9 +833,18 @@ function resolveParaGapAbove(blocks, clientX, clientY) {
 }
 
 /**
- * Clicks on inter-block spaces / para gaps hit the container. Prefer the
- * nearest real text edge (focus or commentary insert) instead of always
- * jumping to the end of the entry. Only true trailing padding appends at end.
+ * Clicks on inter-block spaces / para gaps hit the container (not a span).
+ * Prefer the nearest real text edge (focus or commentary insert) instead of
+ * always jumping to the end of the entry. Only true trailing padding below the
+ * last block appends at end.
+ *
+ * Candidate edges are filtered by Y-overlap with start/end line boxes so a
+ * click between two mid-paragraph blocks doesn't pick a far-away border.
+ *
+ * @param {HTMLElement} container
+ * @param {object} writer
+ * @param {number} clientX
+ * @param {number} clientY
  */
 function handleContainerClick(container, writer, clientX, clientY) {
   const blocks = entryBlocksInOrder(container);
@@ -655,7 +877,8 @@ function handleContainerClick(container, writer, clientX, clientY) {
   }
 
   // No Y-overlapping edges: if we're below some block that ends a paragraph,
-  // land at that paragraph end — never scan every edge in the entry.
+  // land at that paragraph end — never scan every edge in the entry (that was
+  // the "caret jumps to entry end" failure mode).
   if (!candidates.length) {
     for (let i = blocks.length - 1; i >= 0; i--) {
       if (blockEdgeAnchors(blocks[i]).bottom > clientY + 4) continue;
@@ -698,6 +921,11 @@ function handleContainerClick(container, writer, clientX, clientY) {
   insertOwnBlockBefore(best.block, writer);
 }
 
+/**
+ * Append an empty own block at the end of the entry (or focus existing last own).
+ * @param {HTMLElement} container
+ * @param {object} writer
+ */
 function insertOwnBlockAtEnd(container, writer) {
   const blocks = entryBlocksInOrder(container);
   const last = blocks[blocks.length - 1] ?? null;
@@ -720,6 +948,18 @@ function insertOwnBlockAtEnd(container, writer) {
   focusBlockCaret(span, false);
 }
 
+/* ---------------------------------------------------------- */
+/* -- Gather / serialize for save                          -- */
+/* ---------------------------------------------------------- */
+
+/**
+ * Read blocks from the live DOM for PUT payload.
+ * Trims bodies (DB stores edge-trimmed text; separators are client-only).
+ * Skips empty unsaved blocks. Folds adjacent brand-new same-voice runs.
+ *
+ * @param {HTMLElement} container
+ * @returns {object[]}
+ */
 function gatherBlocksFromDom(container) {
   const writer = getCurrentWriter();
   if (!writer) return [];
@@ -755,6 +995,14 @@ function gatherBlocksFromDom(container) {
   return mergeAdjacentSameWriter(blocks);
 }
 
+/**
+ * Fold only brand-new (no id) adjacent runs of the same voice, and never across
+ * a paragraph boundary. Persisted blocks stay separate so concurrent edits to
+ * different halves don't get smashed together incorrectly.
+ *
+ * @param {object[]} blocks
+ * @returns {object[]}
+ */
 function mergeAdjacentSameWriter(blocks) {
   const merged = [];
   for (const block of blocks) {
@@ -796,6 +1044,7 @@ function indexBlocksById(blocks) {
   return map;
 }
 
+/** Assign fresh fractional ranks in list order (after merge rearranges). */
 function rerankBlocks(blocks) {
   let prev = null;
   return blocks.map((b) => {
@@ -805,6 +1054,14 @@ function rerankBlocks(blocks) {
   });
 }
 
+/* ---------------------------------------------------------- */
+/* -- 3-way merge & save                                   -- */
+/* ---------------------------------------------------------- */
+
+/**
+ * True if `nextBody` looks like a prefix or suffix shorten of `baseBody`
+ * (typical mid-split commentary: foreign block kept only the before or after half).
+ */
 function isForeignShorten(baseBody, nextBody) {
   if (baseBody === nextBody) return false;
   if (baseBody.startsWith(nextBody) && nextBody.length < baseBody.length) return true;
@@ -812,6 +1069,7 @@ function isForeignShorten(baseBody, nextBody) {
   return false;
 }
 
+/** Text that was cut off when shortening a foreign block. */
 function foreignRemainder(baseBody, keptBody) {
   if (baseBody.startsWith(keptBody) && keptBody.length < baseBody.length) {
     return baseBody.slice(keptBody.length);
@@ -822,7 +1080,10 @@ function foreignRemainder(baseBody, keptBody) {
   return "";
 }
 
-/** True if the split remainder already exists after the shortened prefix on remote. */
+/**
+ * True if the split remainder already exists after the shortened prefix on remote
+ * (another writer already completed the same split — don't duplicate the half).
+ */
 function hasContinuationAfter(result, afterId, remainder, foreignWriterId) {
   if (!remainder) return false;
   const trimmed = remainder.trim();
@@ -837,7 +1098,22 @@ function hasContinuationAfter(result, afterId, remainder, foreignWriterId) {
 
 /**
  * 3-way merge for concurrent saves: start from remote, overlay this writer's
- * deletions/updates/splits/inserts from local relative to base.
+ * deletions / updates / splits / inserts from local relative to base.
+ *
+ * Steps (high level):
+ * 1. Clone remote as result
+ * 2. Drop ids this writer deleted locally (present in base, absent in local)
+ * 3. Apply this writer's body/flag updates on own blocks; admin may update foreign too
+ * 4. Apply compatible foreign shortens if remote still has the untouched base body
+ * 5. Insert no-id runs from local, anchored after/before surviving ids; skip
+ *    re-inserting a foreign continuation if remote already split the same place
+ * 6. Rerank + fold adjacent unsaved same-voice runs
+ *
+ * @param {object[]} base blocks when this edit session started
+ * @param {object[]} local blocks gathered from DOM now
+ * @param {object[]} remote blocks from the 409 response
+ * @param {string} writerId
+ * @returns {object[]} merged payload for retry
  */
 function mergeBlocks(base, local, remote, writerId) {
   const baseArr = base || [];
@@ -992,6 +1268,7 @@ function mergeBlocks(base, local, remote, writerId) {
 
 const MAX_CONFLICT_RETRIES = 5;
 
+/** @param {HTMLElement} el @returns {string} first `voice-*` class or "" */
 function voiceClassFromEl(el) {
   for (const cls of el.classList) {
     if (cls.startsWith("voice-")) return cls;
@@ -999,7 +1276,14 @@ function voiceClassFromEl(el) {
   return "";
 }
 
-/** Snapshot entry blocks from the DOM for re-render (includes voice CSS class). */
+/**
+ * Snapshot entry blocks from the DOM for re-render (includes voice CSS class).
+ * Unlike gatherBlocksFromDom, keeps raw textContent (no trim) so mode toggles
+ * don't reshape whitespace mid-edit.
+ *
+ * @param {HTMLElement} container
+ * @returns {object[]}
+ */
 function snapshotBlocksFromDom(container) {
   const blocks = [];
   for (const node of container.children) {
@@ -1018,6 +1302,7 @@ function snapshotBlocksFromDom(container) {
   return blocks;
 }
 
+/** @param {HTMLElement} container */
 function entryFromContainer(container) {
   return {
     id: container.dataset.entryId,
@@ -1029,6 +1314,9 @@ function entryFromContainer(container) {
 /**
  * Re-render every entry container under root as editable or read-only,
  * preserving current DOM text when switching modes.
+ *
+ * @param {ParentNode} [root=document]
+ * @param {boolean} [editable=false]
  */
 export function setAllEntriesEditable(root = document, editable = false) {
   root.querySelectorAll(".entry-blocks[data-entry-id]").forEach((container) => {
@@ -1036,7 +1324,10 @@ export function setAllEntriesEditable(root = document, editable = false) {
   });
 }
 
-/** Restore each editable container from its `_editBase` snapshot (read-only). */
+/**
+ * Restore each editable container from its `_editBase` snapshot (read-only).
+ * @param {ParentNode} [root=document]
+ */
 export function discardAllEntryBlocks(root = document) {
   root.querySelectorAll(".entry-blocks[data-entry-id]").forEach((container) => {
     const base = container._editBase;
@@ -1056,7 +1347,15 @@ export function discardAllEntryBlocks(root = document) {
   });
 }
 
-/** @returns {Promise<boolean>} true if saved successfully */
+/**
+ * Save one entry's blocks with optimistic concurrency.
+ * On 409 Conflict, merges local changes onto the remote entry and retries
+ * (up to MAX_CONFLICT_RETRIES).
+ *
+ * @param {HTMLElement} container
+ * @param {{ id: string, version?: number }} entry
+ * @returns {Promise<boolean>} true if saved successfully
+ */
 export async function saveEntryBlocks(container, entry) {
   const writer = getCurrentWriter();
   if (!writer) return false;
@@ -1093,7 +1392,11 @@ export async function saveEntryBlocks(container, entry) {
 }
 
 /**
- * Save every editable entry container under root, sequentially.
+ * Save every editable entry container under root, sequentially (one PUT each).
+ * There is no atomic multi-entry batch API — if a later entry fails, earlier
+ * ones may already have saved (partial success). Returns false on first failure.
+ *
+ * @param {ParentNode} [root=document]
  * @returns {Promise<boolean>} true if all saves succeeded
  */
 export async function saveAllEntryBlocks(root = document) {
@@ -1112,6 +1415,10 @@ export async function saveAllEntryBlocks(root = document) {
   return true;
 }
 
+/**
+ * Apply stylized/simple classes from the format dropdown to blocks + headings.
+ * @param {ParentNode} root
+ */
 export function applyFormatToBlocks(root) {
   const mode = getFormatMode();
   root.querySelectorAll(".entry-block").forEach((el) => {

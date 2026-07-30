@@ -1,3 +1,12 @@
+/**
+ * Travelogue sessions API.
+ * - GET /toc — flat Jump-to outline (sessions + unique dateKeys; prologue skipped
+ *   as a date row — client treats it as session-only).
+ * - GET /sessions?limit&after — cursor pagination by session sortRank; each session
+ *   includes nested game_date chunks with blocks. `nextCursor` is the last page
+ *   session's sortRank (or null).
+ * - POST /sessions — admin creates a session (+ optional empty date chunk).
+ */
 import { Router } from "express";
 import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
@@ -89,6 +98,7 @@ travelogueRouter.get("/toc", async (_req, res, next) => {
 travelogueRouter.get("/sessions", async (req, res, next) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 3, 20);
+    // Cursor = sortRank of last session from previous page (exclusive)
     const after = typeof req.query.after === "string" ? req.query.after : null;
 
     const sessionRows = await db
@@ -102,6 +112,7 @@ travelogueRouter.get("/sessions", async (req, res, next) => {
       .orderBy(asc(entries.sortRank))
       .limit(limit + 1);
 
+    // Fetch limit+1 to detect hasMore without a separate count query
     const hasMore = sessionRows.length > limit;
     const page = hasMore ? sessionRows.slice(0, limit) : sessionRows;
 

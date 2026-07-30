@@ -68,7 +68,8 @@ export const blocks = pgTable("blocks", {
   writerId: uuid("writer_id")
     .notNull()
     .references(() => writers.id),
-  body: text("body").notNull(),
+  body: text("body").notNull(), // edge-trimmed; inter-block spaces are client-only
+  // First block of a visual paragraph (client inserts .entry-para-break before it)
   startsParagraph: boolean("starts_paragraph").notNull().default(false),
   // COLLATE "C" in DB — fractional ranks must use byte order, not locale
   sortRank: text("sort_rank").notNull(),
