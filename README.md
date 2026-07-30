@@ -141,7 +141,8 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
     - COMMENT BLOCKS PLEASE
     - Ensure aria tags are all appropriately assigned
     - reorganize/standardize class selectors, et. al.
-    - 
+    - Get rid of dead code, streamline repetitive code
+    
 
 ### Current task: 
 

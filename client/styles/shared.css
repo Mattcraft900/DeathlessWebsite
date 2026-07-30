@@ -84,11 +84,29 @@ header {
   z-index: 850;
 }
 
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+header.menu-open .menu-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .header-inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
+  background-color: var(--nav-background-color);
 }
 
 #menu-btn {
@@ -120,15 +138,31 @@ header {
 .opened .bar2 { opacity: 0; }
 .opened .bar3 { transform: translate(0, -9px) rotate(45deg); }
 
+.nav-collapse {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+  pointer-events: none;
+}
+
+header.menu-open .nav-collapse {
+  grid-template-rows: 1fr;
+  pointer-events: auto;
+}
+
+.nav-collapse > nav {
+  overflow: hidden;
+  min-height: 0;
+}
+
 nav {
-  display: none;
   background-color: var(--nav-background-color);
   border-bottom: solid 5px var(--secondary1-color);
   width: 100%;
-}
-
-nav.shown {
-  display: block;
 }
 
 nav a {
@@ -567,10 +601,27 @@ footer {
     display: none;
   }
 
+  .menu-backdrop {
+    display: none;
+  }
+
+  .nav-collapse {
+    position: static;
+    display: block;
+    flex: 1;
+    width: auto;
+    pointer-events: auto;
+    transition: none;
+  }
+
+  .nav-collapse > nav {
+    overflow: visible;
+    min-height: auto;
+  }
+
   nav {
     display: block;
     width: auto;
-    flex: 1;
     border-bottom: none;
   }
 

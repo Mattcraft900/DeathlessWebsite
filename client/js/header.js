@@ -4,17 +4,27 @@ function buildHeader() {
   const header = document.getElementById("site-header");
   if (!header) return;
 
+  const backdrop = document.createElement("div");
+  backdrop.className = "menu-backdrop";
+  backdrop.setAttribute("aria-hidden", "true");
+
   const inner = document.createElement("div");
   inner.className = "header-inner";
 
   const menuBtn = document.createElement("button");
   menuBtn.id = "menu-btn";
+  menuBtn.type = "button";
   menuBtn.setAttribute("aria-label", "Menu");
+  menuBtn.setAttribute("aria-expanded", "false");
+  menuBtn.setAttribute("aria-controls", "menu-list");
   menuBtn.innerHTML = `
     <div class="bar1"></div>
     <div class="bar2"></div>
     <div class="bar3"></div>
   `;
+
+  const navCollapse = document.createElement("div");
+  navCollapse.className = "nav-collapse";
 
   const nav = document.createElement("nav");
   const menuList = document.createElement("ul");
@@ -25,14 +35,37 @@ function buildHeader() {
     <li class="nav-link"><a href="/characters">Characters</a></li>
   `;
 
+  function setMenuOpen(open) {
+    header.classList.toggle("menu-open", open);
+    menuBtn.classList.toggle("opened", open);
+    menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    menuBtn.setAttribute("aria-label", open ? "Close menu" : "Menu");
+    backdrop.setAttribute("aria-hidden", open ? "false" : "true");
+  }
+
   menuBtn.addEventListener("click", () => {
-    menuBtn.classList.toggle("opened");
-    nav.classList.toggle("shown");
+    setMenuOpen(!header.classList.contains("menu-open"));
   });
 
+  backdrop.addEventListener("click", () => setMenuOpen(false));
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && header.classList.contains("menu-open")) {
+      setMenuOpen(false);
+    }
+  });
+
+  // If the viewport crosses into desktop layout, force the menu closed
+  const desktopMq = window.matchMedia("(min-width: 600px)");
+  const onViewportChange = () => {
+    if (desktopMq.matches) setMenuOpen(false);
+  };
+  desktopMq.addEventListener("change", onViewportChange);
+
   nav.appendChild(menuList);
-  inner.append(menuBtn, nav);
-  header.appendChild(inner);
+  navCollapse.appendChild(nav);
+  inner.append(menuBtn, navCollapse);
+  header.append(backdrop, inner);
 
   initAuth();
 }
