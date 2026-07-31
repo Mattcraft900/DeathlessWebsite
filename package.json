@@ -19,6 +19,11 @@
     "db:local": "tsx scripts/local-db.ts"
   },
   "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.8",
+    "@types/express": "^5.0.2",
+    "@types/node": "^22.15.21",
+    "@types/pg": "^8.15.2",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.5.0",
@@ -27,18 +32,15 @@
     "fractional-indexing": "^3.2.0",
     "pg": "^8.16.0",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/cookie-parser": "^1.4.8",
-    "@types/express": "^5.0.2",
-    "@types/node": "^22.15.21",
-    "@types/pg": "^8.15.2"
+    "vite": "^6.3.5"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "drizzle-kit": "^0.31.1",
     "embedded-postgres": "^18.4.0-beta.17",
     "tsx": "^4.19.4"
-  },  "allowScripts": {
+  },
+  "allowScripts": {
     "esbuild@0.18.20": true,
     "esbuild@0.25.12": true,
     "esbuild@0.28.1": true,

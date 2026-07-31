@@ -5,7 +5,18 @@
 
 import { initAuth } from "./auth-ui.js";
 
+function ensureSkipLink() {
+    if (document.querySelector(".skip-link")) return;
+    const skip = document.createElement("a");
+    skip.className = "skip-link";
+    skip.href = "#main-content";
+    skip.textContent = "Skip to main content";
+    document.body.insertBefore(skip, document.body.firstChild);
+}
+
 function buildHeader() {
+    ensureSkipLink();
+
     const header = document.getElementById("site-header");
     if (!header) return;
 
@@ -23,15 +34,16 @@ function buildHeader() {
     menuBtn.setAttribute("aria-expanded", "false");
     menuBtn.setAttribute("aria-controls", "menu-list");
     menuBtn.innerHTML = `
-        <div class="bar1"></div>
-        <div class="bar2"></div>
-        <div class="bar3"></div>
+        <span class="bar1" aria-hidden="true"></span>
+        <span class="bar2" aria-hidden="true"></span>
+        <span class="bar3" aria-hidden="true"></span>
     `;
 
     const navCollapse = document.createElement("div");
     navCollapse.className = "nav-collapse";
 
     const nav = document.createElement("nav");
+    nav.setAttribute("aria-label", "Main");
     const menuList = document.createElement("ul");
     menuList.id = "menu-list";
     menuList.innerHTML = `
@@ -57,6 +69,7 @@ function buildHeader() {
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && header.classList.contains("menu-open")) {
             setMenuOpen(false);
+            menuBtn.focus();
         }
     });
 

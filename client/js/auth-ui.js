@@ -41,8 +41,27 @@ function notifyAuthChange() {
 /* ---------------------------------------------------------- */
 
 function closeModal() {
+    if (modalKeyHandler) {
+        document.removeEventListener("keydown", modalKeyHandler);
+        modalKeyHandler = null;
+    }
     const backdrop = document.querySelector(".auth-modal-backdrop");
     if (backdrop) backdrop.remove();
+}
+
+/** @type {((e: KeyboardEvent) => void) | null} */
+let modalKeyHandler = null;
+
+function bindModalEscape(onEscape) {
+    if (modalKeyHandler) {
+        document.removeEventListener("keydown", modalKeyHandler);
+    }
+    modalKeyHandler = (e) => {
+        if (e.key !== "Escape") return;
+        e.preventDefault();
+        onEscape();
+    };
+    document.addEventListener("keydown", modalKeyHandler);
 }
 
 /**
@@ -51,17 +70,19 @@ function closeModal() {
  */
 function showModal(title, fields, onSubmit, { onCancel } = {}) {
     closeModal();
+    const titleId = "auth-modal-title";
     const backdrop = document.createElement("div");
     backdrop.className = "auth-modal-backdrop";
     backdrop.innerHTML = `
-        <div class="auth-modal" role="dialog" aria-modal="true">
-            <h3>${title}</h3>
+        <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="${titleId}">
+            <h3 id="${titleId}">${title}</h3>
             <form class="auth-form"></form>
         </div>
     `;
     const form = backdrop.querySelector(".auth-form");
     const errorEl = document.createElement("p");
     errorEl.className = "auth-error hidden";
+    errorEl.setAttribute("role", "alert");
 
     for (const field of fields) {
         const label = document.createElement("label");
@@ -96,7 +117,7 @@ function showModal(title, fields, onSubmit, { onCancel } = {}) {
     actions.className = "auth-modal-actions";
     const cancelBtn = document.createElement("button");
     cancelBtn.type = "button";
-    cancelBtn.className = "auth-btn";
+    cancelBtn.className = "auth-btn auth-btn-ghost";
     cancelBtn.textContent = "Cancel";
     cancelBtn.addEventListener("click", () => {
         closeModal();
@@ -129,6 +150,11 @@ function showModal(title, fields, onSubmit, { onCancel } = {}) {
             closeModal();
             onCancel?.();
         }
+    });
+
+    bindModalEscape(() => {
+        closeModal();
+        onCancel?.();
     });
 
     document.body.appendChild(backdrop);
@@ -229,8 +255,8 @@ export function showAccountModal() {
         const backdrop = document.createElement("div");
         backdrop.className = "auth-modal-backdrop";
         backdrop.innerHTML = `
-            <div class="auth-modal auth-account-modal" role="dialog" aria-modal="true">
-                <h3>Writer</h3>
+            <div class="auth-modal auth-account-modal" role="dialog" aria-modal="true" aria-labelledby="auth-account-title">
+                <h3 id="auth-account-title">Writer</h3>
                 <p class="auth-confirm-message">${statusText}</p>
                 <div class="auth-modal-actions auth-account-actions">
                     <button type="button" class="auth-btn auth-btn-logout" ${writer ? "" : "disabled"}>Log Out</button>
@@ -259,6 +285,8 @@ export function showAccountModal() {
             if (e.target === backdrop) finish("cancel");
         });
 
+        bindModalEscape(() => finish("cancel"));
+
         document.body.appendChild(backdrop);
         backdrop.querySelector(".auth-btn-change-writer")?.focus();
     });
@@ -277,8 +305,8 @@ export function showDiscardConfirmModal() {
         const backdrop = document.createElement("div");
         backdrop.className = "auth-modal-backdrop";
         backdrop.innerHTML = `
-            <div class="auth-modal auth-confirm-modal" role="dialog" aria-modal="true">
-                <h3>Discard changes?</h3>
+            <div class="auth-modal auth-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="auth-discard-title">
+                <h3 id="auth-discard-title">Discard changes?</h3>
                 <p class="auth-confirm-message">
                     All unsaved changes will be lost.
                 </p>
@@ -303,6 +331,8 @@ export function showDiscardConfirmModal() {
         backdrop.addEventListener("click", (e) => {
             if (e.target === backdrop) finish(false);
         });
+
+        bindModalEscape(() => finish(false));
 
         document.body.appendChild(backdrop);
         backdrop.querySelector(".auth-btn-ghost")?.focus();

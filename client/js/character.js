@@ -32,6 +32,7 @@ function getSlugFromPath() {
 }
 
 function showNotFound(main) {
+    document.title = "Deathless | Not found";
     main.innerHTML = `
         <div id="char-not-found">
             <p>Oops!<br>Looks like this record doesn't exist.</p>
@@ -47,27 +48,28 @@ function renderCharacter(main, data) {
     main.innerHTML = `
         <h1 id="character-name" class="page-title"></h1>
         <img id="character-img" class="hidden" alt="">
-        <hr>
-        <section id="stats-section">
+        <hr class="section-rule" aria-hidden="true">
+        <section class="content-section" id="stats-section" aria-labelledby="stats-heading">
             <h2 id="stats-heading" class="section-heading">Character Stats</h2>
             <div id="stats-list"></div>
         </section>
-        <hr>
-        <section id="description-section">
+        <hr class="section-rule" aria-hidden="true">
+        <section class="content-section" id="description-section" aria-labelledby="description-heading">
             <h2 id="description-heading" class="section-heading">Lucy's Notes:</h2>
-            <div id="dropdown-div">
+            <div class="format-controls" id="format-controls">
                 <label for="format-dropdown">Formatting:</label>
-                <select id="format-dropdown" class="dropdown">
+                <select id="format-dropdown">
                     <option value="simple">Simple</option>
                     <option value="stylized" selected>Stylized</option>
                 </select>
             </div>
             <div id="character-description"></div>
         </section>
-        <hr>
+        <hr class="section-rule" aria-hidden="true">
     `;
 
     document.getElementById("character-name").textContent = character.name;
+    document.title = `Deathless | ${character.name}`;
 
     const img = document.getElementById("character-img");
     attachDetailPortrait(img, character.slug, character.name);

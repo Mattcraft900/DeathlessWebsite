@@ -3,39 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deathless | Homepage</title>
+    <title>Deathless | Home</title>
     <meta name="author" content="Matthew Hilton">
+    <link rel="icon" href="/images/icon-of-sorrow.svg" type="image/svg+xml">
+    <link rel="icon" href="/images/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="/images/icon-of-sorrow-180.png">
     <link rel="stylesheet" href="/styles/home.css">
     <script type="module" src="/js/header.js"></script>
     <script type="module" src="/js/home.js"></script>
 </head>
 <body>
     <header id="site-header"></header>
-    <div id="title-box">
-        <img id="title-img" src="/images/graveyard.jpg" alt="A desolate graveyard" fetchpriority="high">
-        <h1 id="title">DEATHLESS</h1>
+    <div class="hero" id="title-box">
+        <img class="hero__img" id="title-img" src="/images/graveyard.jpg" alt="A desolate graveyard" fetchpriority="high">
+        <h1 class="page-title page-title--hero" id="site-brand">DEATHLESS</h1>
     </div>
-    <main>
-        <section id="intro">
-            <h2 id="intro-heading" class="section-heading">Welcome to Mourne</h2>
-            <p id="intro-blurb">
-                This website acts as a campaign log and a [very incomplete] knowledge base for our home D&D campaign entitled "Deathless"
+    <main id="main-content" tabindex="-1">
+        <section class="page-intro" id="home-intro" aria-labelledby="home-intro-heading">
+            <h2 id="home-intro-heading" class="section-heading">Welcome to Mourne</h2>
+            <p class="page-intro__blurb">
+                This website acts as a campaign log and a [very incomplete] knowledge base for our home D&amp;D campaign entitled "Deathless"
                 in the homebrew world of Mourne. It contains notes and summaries written mostly by one of the party members, Lucy (with a solid assist from
                 another party member, Nemah). Hopefully it proves to be useful and/or entertaining as the saga of The Undying continues!
             </p>
-            <div id="intro-links">
-                <div class="page-link"><a href="/characters"><p>List of Characters</p> →</a></div>
-                <div class="page-link"><a href="/travelogue"><p>Campaign Log</p> →</a></div>
+            <div class="page-intro__links">
+                <a class="page-link" href="/characters">List of Characters <span aria-hidden="true">→</span></a>
+                <a class="page-link" href="/travelogue">Campaign Log <span aria-hidden="true">→</span></a>
             </div>
         </section>
-        <hr>
-        <section id="character-mugs">
-            <h2 class="section-heading">Meet the Party</h2>
-            <p>These colorful characters are The Undying — a gang of disparate individuals brought together by a common affliction and (typically) common enemies. Will the fate of Echumarais, or even Mourne itself, really rest in the hands of these five?</p>
+        <hr class="section-rule" aria-hidden="true">
+        <section class="content-section" id="character-mugs" aria-labelledby="party-heading">
+            <h2 id="party-heading" class="section-heading">Meet the Party</h2>
+            <p class="content-section__lead">These colorful characters are The Undying — a gang of disparate individuals brought together by a common affliction and (typically) common enemies. Will the fate of Echumarais, or even Mourne itself, really rest in the hands of these five?</p>
             <div id="party-gallery" class="character-gallery"></div>
         </section>
-        <div id="deathless-symbol-container">
-            <img src="/images/deathless_symbol.png" alt="The icon of Sorrow">
+        <div class="icon-of-sorrow" id="icon-of-sorrow">
+            <img src="/images/icon-of-sorrow.svg" alt="The Icon of Sorrow" width="256" height="320">
         </div>
     </main>
     <footer>

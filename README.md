@@ -102,7 +102,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 - [x] Fix multiple-user concurrency issues
 - [x] Fix weird insert block position bugs
 - [x] Standardize white space between voice blocks
-- [ ] Margin disappears immediately on collapse Jump To menu (mobile)
+- [x] Margin disappears immediately on collapse Jump To menu (mobile)
 
 ### Wanted for MVP
 
@@ -112,7 +112,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 - [ ] Test infinite scrolling/jump-to functions on the travelogue.
     - [x] Implement jump-to menu(s) for mobile
     - Will need to first generate tons of placeholder entries for the travelogue
-- [ ] Refactor the logo as SVG + get favicon files
+- [x] Refactor the logo as SVG + get favicon files
 - [ ] Figure out a better method of "simplified" styles for six different voices. 
     - Curently they're all just italicized except Lucy.
     - Possibly use some kind of brackets with character name in caps &lt;LUARK: like this, for example&gt;.
@@ -134,7 +134,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 #### Style
 
 - [ ] Color palette overhaul
-- [ ] Find a good subheading font
+- [x] Find a good subheading font
 - [x] Persistent header(s)
     - [ ] Sticky headings for travelogue session entries & character list categories
 - [ ] Box shadow around Deathless title
@@ -143,17 +143,16 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
     - [ ] Center checkbox vertically for hiding session names
     - [ ] Shrink/clamp text on right sidebar to remove the horizontal scroll
     - [ ] Add top margin for both so they don't look so high compared to the travelogue content
+- [ ] Dark Mode
 
 - [ ] Code practices standardizations:
-    - [ ] tab width from 2 -> 4
+    - [x] tab width from 2 -> 4
     - [x] COMMENT BLOCKS PLEASE
-    - [ ] Ensure aria tags are all appropriately assigned
-    - [ ] reorganize/standardize class selectors, et. al. to provide for more consistent formatting across the whole site
+    - [x] Ensure aria tags are all appropriately assigned
+    - [x] reorganize/standardize class selectors, et. al. to provide for more consistent formatting across the whole site
     - [ ] Get rid of dead code, streamline repetitive code
-    - [ ] Shift margins on children to padding on parents where possible to prevent margins overreaching the parent container
     
 
 ### Current task: 
 
 #### List items:
-

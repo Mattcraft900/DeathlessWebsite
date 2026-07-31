@@ -4,30 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deathless | Characters</title>
+    <link rel="icon" href="/images/icon-of-sorrow.svg" type="image/svg+xml">
+    <link rel="icon" href="/images/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="/images/icon-of-sorrow-180.png">
     <link rel="stylesheet" href="/styles/characters.css">
     <script type="module" src="/js/header.js"></script>
     <script type="module" src="/js/characters.js"></script>
 </head>
 <body>
     <header id="site-header"></header>
-    <main>
-        <h2 class="page-title">Characters</h2>
-        <hr>
-        <section>
-            <h3 class="category-heading section-heading">The Undying</h3>
+    <main id="main-content" tabindex="-1">
+        <h1 class="page-title">Characters</h1>
+        <hr class="section-rule" aria-hidden="true">
+        <section class="content-section" id="party-section" aria-labelledby="party-heading">
+            <h2 id="party-heading" class="section-heading">The Undying</h2>
             <div id="party-gallery" class="character-gallery"></div>
         </section>
-        <hr>
-        <section>
-            <h3 class="category-heading section-heading">Other Player Characters</h3>
+        <hr class="section-rule" aria-hidden="true">
+        <section class="content-section" id="opc-section" aria-labelledby="opc-heading">
+            <h2 id="opc-heading" class="section-heading">Other Player Characters</h2>
             <div id="opc-gallery" class="character-gallery"></div>
         </section>
-        <hr>
-        <section>
-            <h3 class="category-heading section-heading">Non-Player Characters</h3>
+        <hr class="section-rule" aria-hidden="true">
+        <section class="content-section" id="npc-section" aria-labelledby="npc-heading">
+            <h2 id="npc-heading" class="section-heading">Non-Player Characters</h2>
             <div id="npc-gallery" class="character-gallery"></div>
         </section>
-        <hr>
+        <hr class="section-rule" aria-hidden="true">
     </main>
 </body>
 </html>

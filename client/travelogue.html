@@ -4,26 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deathless | Travelogue</title>
+    <link rel="icon" href="/images/icon-of-sorrow.svg" type="image/svg+xml">
+    <link rel="icon" href="/images/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="/images/icon-of-sorrow-180.png">
     <link rel="stylesheet" href="/styles/travelogue.css">
     <script type="module" src="/js/header.js"></script>
     <script type="module" src="/js/travelogue.js"></script>
 </head>
 <body>
     <header id="site-header"></header>
-    <main>
-        <section id="intro">
-            <h2 id="intro-title" class="page-title">Travelogue</h2>
-            <p id="intro-blurb">
-                This page has the campaign log for the Deathless D&D campaign.
+    <main id="main-content" tabindex="-1">
+        <section class="page-intro" id="travelogue-intro" aria-labelledby="travelogue-title">
+            <h1 id="travelogue-title" class="page-title">Travelogue</h1>
+            <p class="page-intro__blurb">
+                This page has the campaign log for the Deathless D&amp;D campaign.
                 It's written in-universe by Lucy, with occasional corrections and insights from
                 Nemah and the rest of the party (each in their own voice style).<br>
                 Both the real-world session dates (plus unofficial names) and the in-game dates
                 are included; note that the in-game dates represent when Lucy wrote in the
                 journal (not necessarily the day the described events happened).
             </p>
-            <hr>
+            <hr class="section-rule" aria-hidden="true">
             <div id="admin-session-panel" class="hidden">
-                <form id="new-session-form">
+                <form id="new-session-form" class="admin-session-form">
                     <label for="new-session-title">New session title</label>
                     <input id="new-session-title" name="title" type="text" required placeholder='e.g. 7.4.26 - "Next Stop"'>
                     <button type="submit" class="auth-btn">Add session</button>
@@ -32,14 +35,14 @@
         </section>
         <div class="travelogue-layout">
             <aside class="travelogue-sidebar travelogue-panel" id="format-sidebar">
-                <div id="dropdown-div">
+                <div class="format-controls" id="format-controls">
                     <label for="format-dropdown">Formatting:</label>
                     <select id="format-dropdown">
                         <option value="simple">Simple</option>
                         <option value="stylized" selected>Stylized</option>
                     </select>
                 </div>
-                <div id="checkboxes">
+                <div class="format-controls__options" id="checkboxes">
                     <div class="checkbox-div">
                         <label for="session-check">Turn off session dates/titles</label>
                         <input type="checkbox" id="session-check" checked>
@@ -51,7 +54,7 @@
                     <span class="jump-toggle-label">Jump to...</span>
                     <span class="jump-chevron" aria-hidden="true"></span>
                 </button>
-                <h3 class="jump-heading">Jump to...</h3>
+                <h2 class="jump-heading">Jump to...</h2>
                 <div class="jump-list-collapse">
                     <ul class="sidebar-list jump-list" id="jump-to-list"></ul>
                 </div>

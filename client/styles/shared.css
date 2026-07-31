@@ -1,47 +1,86 @@
 /* Google Fonts import */
-@import url('https://fonts.googleapis.com/css2?family=Indie+Flower&family=Kalam:wght@300;400;700&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Rye&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Indie+Flower&family=Kalam:wght@300;400;700&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Piedra&family=Rye&display=swap');
 
 /* ---------------------------------------------------------- */
 /* -- Color & Typography variables                         -- */
 /* ---------------------------------------------------------- */
+/*
+ * Southern gothic palette (Phase 2) — lean southern, not dungeon:
+ * sun-washed parchment, drying-blood accents, soft walnut chrome.
+ */
 :root {
-    /* Color Palette */
-    --primary1-color: #640C00;
-    --primary2-color: #614433;
-    --secondary1-color: #7F5435;
-    --secondary2-color: #9B7654;
-    --secondary3-color: #B89974;
-    --accent-color: #e6cfa7;
-    --offwhite: #fff2d3;
+    /* Core brand / chrome */
+    --color-oxblood: #6a2218;
+    --color-oxblood-deep: #4a150f;
+    --color-iron: #534336;
+    --color-iron-mid: #655041;
+    --color-moss: #6a7a52;
+    --color-bronze: #a08162;
+    --color-dust: #c4b09a;
+    --color-sand: #f0e2c8;
+    --color-parchment: #faf4e8;
+    --color-parchment-deep: #f3ead8;
+    --ink: #3a2f28;
+    --ink-soft: #5c4f44;
+    --color-cream: #fffbf4;
+
+    /* Semantic tokens */
+    --color-bg: var(--color-parchment);
+    --color-bg-elevated: var(--color-cream);
+    --color-ink: var(--ink);
+    --color-heading: var(--color-oxblood);
+    --color-accent: var(--color-sand);
+    --color-muted: var(--color-dust);
+    --color-link: #7a5a38;
+    --color-link-hover: var(--color-oxblood);
+    --color-nav-bg: var(--color-iron);
+    --color-nav-fg: #f5ebdc;
+    --color-nav-hover-bg: var(--color-oxblood);
+    --color-nav-hover-fg: var(--color-cream);
+    --color-border: var(--color-bronze);
+    --color-focus: var(--color-oxblood);
+    /* Soft hero title shadow (not a hard plaque) */
+    --color-hero-scrim: #1a100c;
+    --color-overlay: color-mix(in srgb, #3a2a1c 40%, transparent);
+    --color-shadow: color-mix(in srgb, #5c4a3a 22%, transparent);
+
+    /* Legacy names → new palette (existing rules keep working) */
+    --primary1-color: var(--color-oxblood);
+    --primary2-color: var(--color-iron);
+    --secondary1-color: var(--color-link);
+    --secondary2-color: var(--color-dust);
+    --secondary3-color: var(--color-sand);
+    --accent-color: var(--color-sand);
+    --offwhite: var(--color-parchment);
+
+    --headline-color-on-white: var(--color-heading);
+    --headline-color-on-color: var(--color-cream);
+    --paragraph-color-on-white: var(--color-ink);
+    --paragraph-color-on-color: var(--color-cream);
+    --paragraph-background-color: var(--color-bg);
+    --nav-link-color: var(--color-nav-fg);
+    --nav-background-color: var(--color-nav-bg);
+    --nav-hover-link-color: var(--color-nav-hover-fg);
+    --nav-hover-background-color: var(--color-nav-hover-bg);
 
     /* Fonts */
     --heading-font: Rye, "Times New Roman", serif;
+    --subheading-font: Piedra, "Times New Roman", serif;
     --paragraph-font: Montserrat, Helvetica, sans-serif;
 
-    /* Voice colors / fonts (stylized mode) */
-    --lucy-color: #551b09;
+    /* Voice colors — warm southern, still distinct on light parchment */
+    --lucy-color: #6a2218;
     --lucy-font: "Indie Flower", Helvetica, sans-serif;
-    --nemah-color: #5f163b;
+    --nemah-color: #7a3d62;
     --nemah-font: Kalam, Helvetica, sans-serif;
-    --luark-color: #3d2b5a;
+    --luark-color: #4a4570;
     --luark-font: Kalam, Helvetica, sans-serif;
-    --enza-color: #1a4a6b;
+    --enza-color: #2a5f72;
     --enza-font: Kalam, Helvetica, sans-serif;
-    --chesco-color: #2f5d2f;
+    --chesco-color: #3d6a42;
     --chesco-font: Kalam, Helvetica, sans-serif;
-    --dm-color: var(--paragraph-color-on-white);
+    --dm-color: var(--ink-soft);
     --dm-font: var(--paragraph-font);
-
-    /* Palette utilization */
-    --headline-color-on-white: var(--primary1-color);
-    --headline-color-on-color: var(--offwhite);
-    --paragraph-color-on-white: black;
-    --paragraph-color-on-color: var(--offwhite);
-    --paragraph-background-color: var(--offwhite);
-    --nav-link-color: var(--accent-color);
-    --nav-background-color: var(--primary2-color);
-    --nav-hover-link-color: var(--secondary3-color);
-    --nav-hover-background-color: var(--primary1-color);
 }
 
 
@@ -53,16 +92,58 @@
     padding: 0;
     margin: 0;
     font-size: 20px;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch devices: brief press feedback — iron on light surfaces (UI chrome),
+   cream on dark chrome. Keeps oxblood reserved for brand/CTA hierarchy. */
+@media (hover: none) and (pointer: coarse) {
+    * {
+        -webkit-tap-highlight-color: color-mix(in srgb, var(--color-iron) 14%, transparent);
+    }
+
+    nav a,
+    #menu-btn,
+    .edit-fab,
+    .edit-footer-btn,
+    .back-to-top,
+    #load-more-btn {
+        -webkit-tap-highlight-color: color-mix(in srgb, var(--color-cream) 16%, transparent);
+    }
+
+    /* Tap highlight ignores border-radius — use :active wash for rounded press targets */
+    .page-link,
+    .character-gallery > a {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .page-link:active {
+        background-color: color-mix(in srgb, var(--color-iron) 14%, transparent);
+    }
 }
 
 body {
     font-family: var(--paragraph-font);
     position: relative;
-    background-color: var(--offwhite);
+    color: var(--color-ink);
+    background-color: var(--color-bg);
+    background-image:
+        radial-gradient(
+            ellipse 140% 70% at 50% -15%,
+            color-mix(in srgb, #fff8ee 80%, transparent),
+            transparent 65%
+        ),
+        linear-gradient(
+            180deg,
+            var(--color-parchment) 0%,
+            var(--color-parchment-deep) 100%
+        );
+    background-attachment: fixed;
+    min-height: 100vh;
 }
 
 main {
-    color: var(--paragraph-color-on-white);
+    color: var(--color-ink);
     padding: 0 30px 100px;
 }
 
@@ -80,11 +161,42 @@ h1, h2, h3, h4, h5, h6 {
     font-family: var(--heading-font);
     font-weight: bold;
     text-align: center;
-    color: var(--headline-color-on-white);
+    color: var(--color-heading);
 }
 
 .hidden {
     display: none !important;
+}
+
+/* Skip link: visible on keyboard focus */
+.skip-link {
+    position: absolute;
+    left: 0.75rem;
+    top: 0.75rem;
+    z-index: 2000;
+    padding: 0.5em 0.85em;
+    background: var(--color-cream);
+    color: var(--color-oxblood);
+    border: 2px solid var(--color-oxblood);
+    border-radius: 4px;
+    font-family: var(--paragraph-font);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-150%);
+    transition: transform 0.15s ease;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+    transform: translateY(0);
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
 }
 
 
@@ -104,7 +216,7 @@ header {
 .menu-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--color-overlay);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
@@ -135,7 +247,9 @@ header.menu-open .menu-backdrop {
     aspect-ratio: 1/1;
 }
 
+#menu-btn span,
 #menu-btn div {
+    display: block;
     width: 100%;
     height: 20%;
     background-color: var(--nav-link-color);
@@ -148,6 +262,7 @@ header.menu-open .menu-backdrop {
     background-color: var(--nav-hover-background-color);
 }
 
+#menu-btn:hover span,
 #menu-btn:hover div {
     background-color: var(--nav-hover-link-color);
 }
@@ -180,7 +295,7 @@ header.menu-open .nav-collapse {
 
 nav {
     background-color: var(--nav-background-color);
-    border-bottom: solid 5px var(--secondary1-color);
+    border-bottom: solid 5px var(--color-border);
     width: 100%;
 }
 
@@ -197,8 +312,18 @@ nav a {
 #menu-list li {
     font-family: var(--heading-font);
     font-weight: bold;
+    padding: 0;
+    border-top: solid 3px var(--color-border);
+}
+
+#menu-list a {
+    display: block;
+    width: 100%;
     padding: 0.75em 2em;
-    border-top: solid 3px var(--secondary1-color);
+}
+
+#menu-list a:focus-visible {
+    outline-offset: -4px;
 }
 
 
@@ -206,8 +331,8 @@ nav a {
 /* -- Auth buttons & modals                                -- */
 /* ---------------------------------------------------------- */
 .auth-btn {
-    background: var(--accent-color);
-    color: var(--primary1-color);
+    background: var(--color-accent);
+    color: var(--color-oxblood);
     border: none;
     border-radius: 6px;
     padding: 0.35em 0.75em;
@@ -216,18 +341,27 @@ nav a {
     cursor: pointer;
 }
 
-.auth-btn:hover {
-    background: var(--offwhite);
+.auth-btn:hover,
+.auth-btn:focus-visible {
+    background: var(--color-cream);
 }
 
+/* Text-only cancel / secondary — matches modal surface, tap target ≈ label */
 .auth-btn-ghost {
     background: transparent;
-    color: var(--paragraph-color-on-white);
-    border: 1px solid var(--secondary2-color);
+    color: var(--color-ink);
+    border: none;
+    border-radius: 0;
+    padding: 0.15em 0.2em;
+    font-size: 0.9em;
+    line-height: 1.2;
 }
 
-.auth-btn-ghost:hover {
-    background: rgba(0, 0, 0, 0.05);
+.auth-btn-ghost:hover,
+.auth-btn-ghost:focus-visible {
+    background: transparent;
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
 .auth-btn:disabled {
@@ -251,10 +385,17 @@ nav a {
     text-align: center;
 }
 
+.auth-account-actions .auth-btn-ghost {
+    width: auto;
+    align-self: center;
+    padding: 0.15em 0.2em;
+    font-size: 0.9em;
+}
+
 .auth-modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--color-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -263,17 +404,20 @@ nav a {
 }
 
 .auth-modal {
-    background: var(--offwhite);
-    color: var(--paragraph-color-on-white);
+    background: var(--color-bg-elevated);
+    color: var(--color-ink);
     padding: 1.5em;
-    border-radius: 12px;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
     width: min(90vw, 360px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 12px 40px var(--color-shadow);
 }
 
 .auth-modal h3 {
     margin-bottom: 1em;
-    font-size: 1.2em;
+    font-family: var(--subheading-font);
+    font-size: 1.45em;
+    font-weight: normal;
 }
 
 .auth-confirm-message {
@@ -293,8 +437,10 @@ nav a {
     width: 100%;
     padding: 0.5em;
     font-size: 1em;
-    border: 1px solid var(--secondary2-color);
+    border: 1px solid var(--color-border);
     border-radius: 6px;
+    background: var(--color-cream);
+    color: var(--color-ink);
 }
 
 .auth-modal-actions {
@@ -305,20 +451,28 @@ nav a {
 }
 
 .auth-confirm-actions {
-    justify-content: stretch;
+    justify-content: space-between;
+    align-items: center;
     gap: 0.75em;
 }
 
 .auth-confirm-actions .auth-btn {
-    flex: 1 1 0;
+    flex: 1 1 auto;
     margin: 0;
     padding: 0.75em 0.5em;
     font-size: 1em;
     text-align: center;
+    white-space: nowrap;
+}
+
+.auth-confirm-actions .auth-btn-ghost {
+    flex: 0 0 auto;
+    padding: 0.15em 0.2em;
+    font-size: 0.9em;
 }
 
 .auth-error {
-    color: var(--primary1-color);
+    color: var(--color-oxblood);
     font-size: 0.85em;
     margin-top: 0.5em;
 }
@@ -358,9 +512,9 @@ nav a {
     height: 56px;
     border: none;
     border-radius: 50%;
-    background: var(--primary2-color);
-    color: var(--offwhite);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    background: var(--color-oxblood);
+    color: var(--color-cream);
+    box-shadow: 0 4px 18px var(--color-shadow);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -369,13 +523,16 @@ nav a {
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
-    -webkit-tap-highlight-color: transparent;
 }
 
 .edit-fab:hover,
 .edit-fab:focus-visible {
-    background: var(--primary1-color);
+    background: var(--color-oxblood-deep);
     outline: none;
+}
+
+.edit-fab:focus-visible {
+    box-shadow: 0 0 0 3px var(--color-cream), 0 4px 18px var(--color-shadow);
 }
 
 .edit-fab-icon {
@@ -391,12 +548,12 @@ nav a {
     bottom: 0;
     display: flex;
     gap: 0;
-    background: var(--nav-background-color);
-    border-top: 3px solid var(--secondary1-color);
+    background: var(--color-nav-bg);
+    border-top: 3px solid var(--color-border);
     padding: 0.5rem max(0.5rem, env(safe-area-inset-right))
         max(0.5rem, env(safe-area-inset-bottom))
         max(0.5rem, env(safe-area-inset-left));
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 -4px 20px var(--color-shadow);
 }
 
 .edit-footer-btn {
@@ -409,17 +566,16 @@ nav a {
     font-size: 1.05em;
     font-weight: bold;
     cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
 }
 
 .edit-footer-save {
-    background: var(--accent-color);
-    color: var(--primary1-color);
+    background: var(--color-accent);
+    color: var(--color-oxblood);
 }
 
 .edit-footer-save:hover,
 .edit-footer-save:focus-visible {
-    background: var(--offwhite);
+    background: var(--color-cream);
     outline: none;
 }
 
@@ -430,13 +586,13 @@ nav a {
 
 .edit-footer-cancel {
     background: transparent;
-    color: var(--offwhite);
-    border: 1px solid var(--secondary1-color);
+    color: var(--color-cream);
+    border: 1px solid var(--color-border);
 }
 
 .edit-footer-cancel:hover,
 .edit-footer-cancel:focus-visible {
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, var(--color-cream) 10%, transparent);
     outline: none;
 }
 
@@ -450,9 +606,31 @@ body.edit-mode {
 /* -- Page titles / section chrome                         -- */
 /* ---------------------------------------------------------- */
 .page-title {
-    font-size: clamp(6cqw, 3em, 12cqw);
+    /* Tuned for ~360px (Galaxy S8+) up through desktop; long titles like Travelogue stay on-screen */
+    font-size: clamp(2.2rem, 5.5vw + 1.15rem, 3.5em);
     font-weight: normal;
+    line-height: 1.15;
     margin: 40px 0 20px;
+    max-width: 100%;
+}
+
+/* Home hero brand — sole h1; rectangular scrim with feathered edges */
+.page-title--hero {
+    margin: 0;
+    font-size: 2em;
+    font-weight: normal;
+    color: var(--color-cream);
+    width: max-content;
+    max-width: calc(100% - 2rem);
+    padding: 0.12em 0.35em;
+    text-align: center;
+    text-shadow: 0 1px 2px color-mix(in srgb, #000 45%, transparent);
+    background-color: color-mix(in srgb, var(--color-hero-scrim) 58%, transparent);
+    border-radius: 0.35em;
+    box-shadow:
+        0 0 10px 6px color-mix(in srgb, var(--color-hero-scrim) 40%, transparent),
+        0 0 22px 14px color-mix(in srgb, var(--color-hero-scrim) 20%, transparent),
+        0 0 36px 24px color-mix(in srgb, var(--color-hero-scrim) 8%, transparent);
 }
 
 .section-heading {
@@ -461,12 +639,88 @@ body.edit-mode {
     font-size: 1.75em;
 }
 
-hr {
+hr,
+.section-rule {
     border: none;
-    background-color: var(--secondary2-color);
-    color: var(--secondary2-color);
+    background-color: var(--color-muted);
+    color: var(--color-muted);
     height: 2px;
     margin: 20px auto;
+}
+
+/* Shared intro block (home welcome, travelogue lead-in) */
+.page-intro {
+    margin-bottom: 0.5em;
+}
+
+.page-intro__blurb {
+    text-align: justify;
+}
+
+.page-intro__links {
+    margin: 15px 15px 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    align-items: center;
+}
+
+.page-link {
+    display: inline-block;
+    padding: 0.2em 0.425em;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 1.15em;
+    text-align: center;
+    color: var(--color-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.page-link:hover,
+.page-link:focus-visible {
+    color: var(--color-link-hover);
+}
+
+.content-section {
+    margin-bottom: 0.5em;
+}
+
+.content-section__lead {
+    text-align: justify;
+}
+
+/* Format dropdown shared by character detail + travelogue */
+.format-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    flex-wrap: wrap;
+    margin: 10px 0;
+}
+
+.format-controls label {
+    font-size: 0.95em;
+}
+
+.format-controls select,
+#format-dropdown {
+    font-size: 1em;
+    font-family: var(--paragraph-font);
+    color: var(--color-ink);
+    background: var(--color-cream);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0.2em 0.4em;
+}
+
+.format-controls__options {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1em;
+    margin-top: 10px;
 }
 
 
@@ -481,31 +735,46 @@ hr {
     margin-top: 20px;
 }
 
+.character-gallery > a {
+    display: block;
+    height: 100%;
+    border-radius: 12px;
+}
+
 .character-card {
-    background-color: var(--accent-color);
-    border-radius: 15px;
+    background-color: var(--color-accent);
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
     padding: 15px;
     height: 100%;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.12s ease;
+}
+
+.character-gallery > a:active .character-card {
+    background-color: color-mix(in srgb, var(--color-iron) 14%, var(--color-accent));
 }
 
 .character-card .character-img {
     width: 240px;
     max-width: 100%;
-    border: solid 2px var(--primary1-color);
+    border: solid 2px color-mix(in srgb, var(--color-border) 55%, transparent);
     border-radius: 50%;
     display: block;
     margin: 0 auto;
     aspect-ratio: 1;
     object-fit: cover;
+    transition: border-color 0.2s ease, border-width 0.2s ease;
 }
 
 .character-card .character-name {
     font-size: 1.4em;
     margin: 0.2em;
+    color: var(--color-heading);
 }
 
 .character-card .character-snippet {
     text-align: center;
+    color: var(--ink-soft);
 }
 
 
@@ -533,13 +802,13 @@ hr {
 }
 
 .entry-block[contenteditable="true"]:not([data-empty="true"]) {
-    outline: 1px dashed var(--secondary2-color);
+    outline: 1px dashed var(--color-muted);
     outline-offset: 2px;
     border-radius: 2px;
 }
 
 .entry-block[contenteditable="true"]:focus {
-    outline: 1px dashed var(--primary1-color);
+    outline: 1px dashed var(--color-oxblood);
     outline-offset: 2px;
     border-radius: 2px;
 }
@@ -608,17 +877,24 @@ hr {
 /* -- Footer / Misc.                                       -- */
 /* ---------------------------------------------------------- */
 footer {
-    background-color: var(--offwhite);
+    background: transparent;
 }
 
 .attribution {
     text-align: center;
     font-size: 0.8em;
+    color: var(--ink-soft);
+    padding: 1em 0 1.5em;
 }
 
 .attribution a {
-    color: var(--secondary1-color);
+    color: var(--color-link);
     text-decoration: underline;
+}
+
+.attribution a:hover,
+.attribution a:focus-visible {
+    color: var(--color-link-hover);
 }
 
 
@@ -713,11 +989,28 @@ footer {
         column-gap: 10px;
     }
 
+    .character-card:hover {
+        border-color: var(--color-oxblood);
+        box-shadow: 0 6px 18px color-mix(in srgb, var(--color-iron) 18%, transparent);
+    }
+
     .character-card:hover .character-img {
         border-width: 4px;
+        border-color: var(--color-oxblood);
     }
 
     .character-card:hover .character-name {
         text-decoration: underline;
+    }
+
+    /* Intro CTAs (home) */
+    .page-intro__links {
+        flex-direction: row;
+        justify-content: center;
+        gap: 4em;
+    }
+
+    .page-title--hero {
+        font-size: 3.5em;
     }
 }

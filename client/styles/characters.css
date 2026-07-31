@@ -1,14 +1,19 @@
 @import './shared.css';
 
 /* ---------------------------------------------------------- */
-/* -- Gallery tweaks                                       -- */
+/* -- Gallery list spacing                                 -- */
 /* ---------------------------------------------------------- */
+.content-section .section-heading {
+    font-family: var(--subheading-font);
+    font-weight: 400;
+}
+
 .empty-message {
     grid-column: 1 / -1;
     text-align: center;
     font-size: 1.25em;
 }
 
-.character-gallery {
+.content-section .character-gallery {
     margin-bottom: 60px;
 }

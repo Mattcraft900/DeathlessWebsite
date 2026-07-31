@@ -14,7 +14,7 @@
 }
 
 #char-not-found a:hover {
-    color: var(--secondary2-color);
+    color: var(--color-link-hover);
 }
 
 #char-not-found p {
@@ -24,7 +24,7 @@
 
 #char-not-found a {
     font-size: 1.25em;
-    color: var(--primary2-color);
+    color: var(--color-link);
     text-decoration: underline;
 }
 
@@ -57,7 +57,9 @@
 
 .stat-name {
     display: inline;
-    font-weight: bold;
+    font-family: var(--subheading-font);
+    font-size: 1.05em;
+    font-weight: normal;
 }
 
 .stat-value {
@@ -66,18 +68,16 @@
 
 
 /* ---------------------------------------------------------- */
-/* -- Description / formatting                             -- */
+/* -- Description                                          -- */
 /* ---------------------------------------------------------- */
-#dropdown-div {
-    margin: 10px 0;
-    display: flex;
-    justify-content: center;
-    gap: 0.5em;
-}
-
 #character-description {
     margin: 20px 0 40px;
     text-align: justify;
+}
+
+/* Format controls on detail: centered (shared default already centers) */
+#description-section .format-controls {
+    margin: 10px 0 20px;
 }
 
 
@@ -86,10 +86,6 @@
 /* ############++++++++++--------------++++++++++############ */
 
 @media screen and (min-width: 600px) {
-    #character-name {
-        font-size: 3.5em;
-    }
-
     #character-description {
         margin-bottom: 60px;
     }
