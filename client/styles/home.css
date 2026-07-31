@@ -4,31 +4,31 @@
 /* -- Title box                                            -- */
 /* ---------------------------------------------------------- */
 #title-box {
-  position: relative;
+    position: relative;
 }
 
 #title-img {
     display: block;
-  width: 100%;
-  height: calc(min(50vh, 640px));
-  object-fit: cover;
-  object-position: center;
+    width: 100%;
+    height: calc(min(50vh, 640px));
+    object-fit: cover;
+    object-position: center;
 }
 
 #title {
-  font-weight: normal;
-  font-size: 2em;
-  color: var(--headline-color-on-white);
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-shadow: 1px 1px 15px var(--offwhite);
-  background-color: #19100044;
+    font-weight: normal;
+    font-size: 2em;
+    color: var(--headline-color-on-white);
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 1px 1px 15px var(--offwhite);
+    background-color: #19100044;
 }
 
 
@@ -36,26 +36,26 @@
 /* -- Intro                                                -- */
 /* ---------------------------------------------------------- */
 section > p {
-  text-align: justify;
+    text-align: justify;
 }
 
 #intro-links {
-  margin: 15px 15px 25px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5em;
+    margin: 15px 15px 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
 }
 
 .page-link {
-  font-weight: bold;
-  font-size: 1.15em;
-  text-align: center;
-  color: var(--secondary1-color);
+    font-weight: bold;
+    font-size: 1.15em;
+    text-align: center;
+    color: var(--secondary1-color);
 }
 
 .page-link p {
-  display: inline;
-  text-decoration: underline;
+    display: inline;
+    text-decoration: underline;
 }
 
 
@@ -63,9 +63,9 @@ section > p {
 /* -- Misc.                                                -- */
 /* ---------------------------------------------------------- */
 #deathless-symbol-container {
-  width: calc(min(50%, 256px));
-  display: block;
-  margin: 100px auto 0;
+    width: calc(min(50%, 256px));
+    display: block;
+    margin: 100px auto 0;
 }
 
 
@@ -74,13 +74,13 @@ section > p {
 /* ############++++++++++--------------++++++++++############ */
 
 @media screen and (min-width: 600px) {
-  #title {
-    font-size: 3.5em;
-  }
+    #title {
+        font-size: 3.5em;
+    }
 
-  #intro-links {
-    flex-direction: row;
-    justify-content: center;
-    gap: 4em;
-  }
+    #intro-links {
+        flex-direction: row;
+        justify-content: center;
+        gap: 4em;
+    }
 }

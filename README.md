@@ -145,12 +145,12 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
     - [ ] Add top margin for both so they don't look so high compared to the travelogue content
 
 - [ ] Code practices standardizations:
-    - tab width from 2 -> 4
-    - COMMENT BLOCKS PLEASE
-    - Ensure aria tags are all appropriately assigned
-    - reorganize/standardize class selectors, et. al. to provide for more consistent formatting across the whole site
-    - Get rid of dead code, streamline repetitive code
-    - Shift margins on children to padding on parents where possible to prevent margins overreaching the parent container
+    - [ ] tab width from 2 -> 4
+    - [x] COMMENT BLOCKS PLEASE
+    - [ ] Ensure aria tags are all appropriately assigned
+    - [ ] reorganize/standardize class selectors, et. al. to provide for more consistent formatting across the whole site
+    - [ ] Get rid of dead code, streamline repetitive code
+    - [ ] Shift margins on children to padding on parents where possible to prevent margins overreaching the parent container
     
 
 ### Current task: 

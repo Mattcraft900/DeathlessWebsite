@@ -4,28 +4,28 @@
 /* -- Not found                                            -- */
 /* ---------------------------------------------------------- */
 #char-not-found {
-  display: flex;
-  flex-direction: column;
-  height: 70vh;
-  justify-content: center;
-  gap: 30px;
-  align-items: center;
-  text-align: center;
+    display: flex;
+    flex-direction: column;
+    height: 70vh;
+    justify-content: center;
+    gap: 30px;
+    align-items: center;
+    text-align: center;
 }
 
 #char-not-found a:hover {
-  color: var(--secondary2-color);
+    color: var(--secondary2-color);
 }
 
 #char-not-found p {
-  font-size: 1.5em;
-  font-weight: bold;
+    font-size: 1.5em;
+    font-weight: bold;
 }
 
 #char-not-found a {
-  font-size: 1.25em;
-  color: var(--primary2-color);
-  text-decoration: underline;
+    font-size: 1.25em;
+    color: var(--primary2-color);
+    text-decoration: underline;
 }
 
 
@@ -33,12 +33,12 @@
 /* -- Portrait                                             -- */
 /* ---------------------------------------------------------- */
 #character-img {
-  border-radius: 20px;
-  height: 600px;
-  max-height: 60vh;
-  display: block;
-  margin: 0 auto;
-  object-fit: cover;
+    border-radius: 20px;
+    height: 600px;
+    max-height: 60vh;
+    display: block;
+    margin: 0 auto;
+    object-fit: cover;
 }
 
 
@@ -46,22 +46,22 @@
 /* -- Stats Section                                        -- */
 /* ---------------------------------------------------------- */
 #stats-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  row-gap: 0.5em;
-  column-gap: 1em;
-  max-width: 80%;
-  margin: 0 auto 30px;
-  font-size: 1.2em;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    row-gap: 0.5em;
+    column-gap: 1em;
+    max-width: 80%;
+    margin: 0 auto 30px;
+    font-size: 1.2em;
 }
 
 .stat-name {
-  display: inline;
-  font-weight: bold;
+    display: inline;
+    font-weight: bold;
 }
 
 .stat-value {
-  display: inline;
+    display: inline;
 }
 
 
@@ -69,15 +69,15 @@
 /* -- Description / formatting                             -- */
 /* ---------------------------------------------------------- */
 #dropdown-div {
-  margin: 10px 0;
-  display: flex;
-  justify-content: center;
-  gap: 0.5em;
+    margin: 10px 0;
+    display: flex;
+    justify-content: center;
+    gap: 0.5em;
 }
 
 #character-description {
-  margin: 20px 0 40px;
-  text-align: justify;
+    margin: 20px 0 40px;
+    text-align: justify;
 }
 
 
@@ -86,15 +86,15 @@
 /* ############++++++++++--------------++++++++++############ */
 
 @media screen and (min-width: 600px) {
-  #character-name {
-    font-size: 3.5em;
-  }
+    #character-name {
+        font-size: 3.5em;
+    }
 
-  #character-description {
-    margin-bottom: 60px;
-  }
+    #character-description {
+        margin-bottom: 60px;
+    }
 
-  #character-description .entry-blocks {
-    font-size: 1.2em;
-  }
+    #character-description .entry-blocks {
+        font-size: 1.2em;
+    }
 }

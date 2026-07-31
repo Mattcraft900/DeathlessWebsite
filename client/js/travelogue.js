@@ -36,8 +36,8 @@ let sentinelObserver = null;
 
 /** @returns {"simple"|"stylized"} */
 function getFormatMode() {
-  const dropdown = document.getElementById("format-dropdown");
-  return dropdown?.value === "simple" ? "simple" : "stylized";
+    const dropdown = document.getElementById("format-dropdown");
+    return dropdown?.value === "simple" ? "simple" : "stylized";
 }
 
 /* ---------------------------------------------------------- */
@@ -45,56 +45,56 @@ function getFormatMode() {
 /* ---------------------------------------------------------- */
 
 function renderSessionTitle(session) {
-  const h = document.createElement("h3");
-  h.className = `session-title ${getFormatMode()}`;
-  h.id = `entry-${session.id}`;
-  h.textContent = session.title || "Session";
-  return h;
+    const h = document.createElement("h3");
+    h.className = `session-title ${getFormatMode()}`;
+    h.id = `entry-${session.id}`;
+    h.textContent = session.title || "Session";
+    return h;
 }
 
 function renderGameDateHeading(chunk) {
-  if (!chunk.showHeading || !chunk.title) return null;
-  const h = document.createElement("h4");
-  h.className = `game-date-heading voice-lucy ${getFormatMode()}`;
-  h.id = `entry-${chunk.id}`;
-  h.textContent = chunk.title;
-  return h;
+    if (!chunk.showHeading || !chunk.title) return null;
+    const h = document.createElement("h4");
+    h.className = `game-date-heading voice-lucy ${getFormatMode()}`;
+    h.id = `entry-${chunk.id}`;
+    h.textContent = chunk.title;
+    return h;
 }
 
 function renderGameDateEntry(chunk, editable) {
-  const wrap = document.createElement("article");
-  wrap.className = "game-date-entry";
+    const wrap = document.createElement("article");
+    wrap.className = "game-date-entry";
 
-  const heading = renderGameDateHeading(chunk);
-  if (heading) {
-    wrap.appendChild(heading);
-  } else {
-    // No visible heading — anchor the chunk wrapper itself for Jump-to / hashes
-    wrap.id = `entry-${chunk.id}`;
-  }
+    const heading = renderGameDateHeading(chunk);
+    if (heading) {
+        wrap.appendChild(heading);
+    } else {
+        // No visible heading — anchor the chunk wrapper itself for Jump-to / hashes
+        wrap.id = `entry-${chunk.id}`;
+    }
 
-  const blocksEl = document.createElement("div");
-  renderEntryBlocks(blocksEl, chunk, { editable });
-  wrap.appendChild(blocksEl);
-  return wrap;
+    const blocksEl = document.createElement("div");
+    renderEntryBlocks(blocksEl, chunk, { editable });
+    wrap.appendChild(blocksEl);
+    return wrap;
 }
 
 function renderSession(session, editable) {
-  const block = document.createElement("section");
-  block.className = "session-block";
-  block.dataset.sortRank = session.sortRank;
-  block.appendChild(renderSessionTitle(session));
+    const block = document.createElement("section");
+    block.className = "session-block";
+    block.dataset.sortRank = session.sortRank;
+    block.appendChild(renderSessionTitle(session));
 
-  for (const chunk of session.gameDates || []) {
-    block.appendChild(renderGameDateEntry(chunk, editable));
-  }
+    for (const chunk of session.gameDates || []) {
+        block.appendChild(renderGameDateEntry(chunk, editable));
+    }
 
-  const sessionCheck = document.getElementById("session-check");
-  if (sessionCheck && !sessionCheck.checked) {
-    block.querySelector(".session-title")?.classList.add("hidden");
-  }
+    const sessionCheck = document.getElementById("session-check");
+    if (sessionCheck && !sessionCheck.checked) {
+        block.querySelector(".session-title")?.classList.add("hidden");
+    }
 
-  return block;
+    return block;
 }
 
 /* ---------------------------------------------------------- */
@@ -102,19 +102,19 @@ function renderSession(session, editable) {
 /* ---------------------------------------------------------- */
 
 function setupInfiniteScroll() {
-  const sentinel = document.getElementById("scroll-sentinel");
-  if (!sentinel) return;
-  if (sentinelObserver) sentinelObserver.disconnect();
+    const sentinel = document.getElementById("scroll-sentinel");
+    if (!sentinel) return;
+    if (sentinelObserver) sentinelObserver.disconnect();
 
-  sentinelObserver = new IntersectionObserver(
-    (entries) => {
-      if (entries.some((e) => e.isIntersecting) && nextCursor && !loading) {
-        loadSessions(true);
-      }
-    },
-    { rootMargin: "200px" },
-  );
-  sentinelObserver.observe(sentinel);
+    sentinelObserver = new IntersectionObserver(
+        (entries) => {
+            if (entries.some((e) => e.isIntersecting) && nextCursor && !loading) {
+                loadSessions(true);
+            }
+        },
+        { rootMargin: "200px" },
+    );
+    sentinelObserver.observe(sentinel);
 }
 
 /**
@@ -124,43 +124,43 @@ function setupInfiniteScroll() {
  * @param {boolean} [append=false] false = replace list; true = append next page
  */
 async function loadSessions(append = false) {
-  if (loading) {
-    await loadPromise;
-    return;
-  }
-  loading = true;
-  if (loadMoreBtn) loadMoreBtn.disabled = true;
-
-  loadPromise = (async () => {
-    try {
-      const qs = new URLSearchParams({ limit: "3" });
-      if (append && nextCursor) qs.set("after", nextCursor);
-
-      const data = await apiGet(`/travelogue/sessions?${qs}`);
-      const editable = isEditMode();
-
-      if (!append) sessionsContainer.innerHTML = "";
-
-      for (const session of data.sessions) {
-        sessionsContainer.appendChild(renderSession(session, editable));
-      }
-
-      nextCursor = data.nextCursor;
-      if (loadMoreBtn) {
-        loadMoreBtn.classList.toggle("hidden", !nextCursor);
-        loadMoreBtn.disabled = false;
-      }
-    } catch (err) {
-      console.error(err);
-      if (!append) {
-        sessionsContainer.innerHTML = `<p>Could not load travelogue.</p>`;
-      }
-    } finally {
-      loading = false;
+    if (loading) {
+        await loadPromise;
+        return;
     }
-  })();
+    loading = true;
+    if (loadMoreBtn) loadMoreBtn.disabled = true;
 
-  await loadPromise;
+    loadPromise = (async () => {
+        try {
+            const qs = new URLSearchParams({ limit: "3" });
+            if (append && nextCursor) qs.set("after", nextCursor);
+
+            const data = await apiGet(`/travelogue/sessions?${qs}`);
+            const editable = isEditMode();
+
+            if (!append) sessionsContainer.innerHTML = "";
+
+            for (const session of data.sessions) {
+                sessionsContainer.appendChild(renderSession(session, editable));
+            }
+
+            nextCursor = data.nextCursor;
+            if (loadMoreBtn) {
+                loadMoreBtn.classList.toggle("hidden", !nextCursor);
+                loadMoreBtn.disabled = false;
+            }
+        } catch (err) {
+            console.error(err);
+            if (!append) {
+                sessionsContainer.innerHTML = `<p>Could not load travelogue.</p>`;
+            }
+        } finally {
+            loading = false;
+        }
+    })();
+
+    await loadPromise;
 }
 
 /* ---------------------------------------------------------- */
@@ -173,35 +173,35 @@ async function loadSessions(append = false) {
  * @returns {Promise<HTMLElement|null>}
  */
 async function ensureEntryInDom(domId) {
-  for (;;) {
-    const el = document.getElementById(domId);
-    if (el) return el;
-    if (loading) {
-      await loadPromise;
-      continue;
+    for (;;) {
+        const el = document.getElementById(domId);
+        if (el) return el;
+        if (loading) {
+            await loadPromise;
+            continue;
+        }
+        if (!nextCursor) return null;
+        await loadSessions(true);
     }
-    if (!nextCursor) return null;
-    await loadSessions(true);
-  }
 }
 
 /** @returns {number} ms to wait for collapse animation (0 if already closed) */
 function collapseJumpMenu() {
-  if (!jumpSidebar?.classList.contains("is-open")) return 0;
-  jumpSidebar.classList.remove("is-open");
-  jumpToggle?.setAttribute("aria-expanded", "false");
-  return JUMP_COLLAPSE_MS;
+    if (!jumpSidebar?.classList.contains("is-open")) return 0;
+    jumpSidebar.classList.remove("is-open");
+    jumpToggle?.setAttribute("aria-expanded", "false");
+    return JUMP_COLLAPSE_MS;
 }
 
 /** Prefer scrolling to a heading inside a wrapper, not the wrapper top alone. */
 function scrollTargetFor(el) {
-  if (
-    el.matches(".session-title, .game-date-heading") ||
-    !el.querySelector
-  ) {
-    return el;
-  }
-  return el.querySelector(".session-title, .game-date-heading") || el;
+    if (
+        el.matches(".session-title, .game-date-heading") ||
+        !el.querySelector
+    ) {
+        return el;
+    }
+    return el.querySelector(".session-title, .game-date-heading") || el;
 }
 
 /**
@@ -210,43 +210,43 @@ function scrollTargetFor(el) {
  * @returns {Promise<boolean>}
  */
 async function jumpToDomId(domId) {
-  const waitCollapse = collapseJumpMenu();
-  const el = await ensureEntryInDom(domId);
-  if (!el) return false;
-  if (waitCollapse) {
-    await new Promise((r) => setTimeout(r, waitCollapse));
-  }
-  scrollTargetFor(el).scrollIntoView({ behavior: "instant", block: "start" });
-  history.pushState(null, "", `#${domId}`);
-  return true;
+    const waitCollapse = collapseJumpMenu();
+    const el = await ensureEntryInDom(domId);
+    if (!el) return false;
+    if (waitCollapse) {
+        await new Promise((r) => setTimeout(r, waitCollapse));
+    }
+    scrollTargetFor(el).scrollIntoView({ behavior: "instant", block: "start" });
+    history.pushState(null, "", `#${domId}`);
+    return true;
 }
 
 function renderJumpToList() {
-  if (!tocData || !jumpToList) return;
+    if (!tocData || !jumpToList) return;
 
-  const items = [];
-  for (const session of tocData.sessions || []) {
-    items.push(
-      `<li class="jump-session"><a href="#entry-${session.id}">${escapeHtml(session.title || "Session")}</a></li>`,
-    );
-    for (const d of session.dates || []) {
-      // Prologue is a session heading only in the Jump-to UX (skip duplicate date row)
-      if (d.dateKey === "prologue") continue;
-      const label = d.title || d.dateKey;
-      items.push(
-        `<li class="jump-date"><a href="#entry-${d.anchorEntryId}">${escapeHtml(label)}</a></li>`,
-      );
+    const items = [];
+    for (const session of tocData.sessions || []) {
+        items.push(
+            `<li class="jump-session"><a href="#entry-${session.id}">${escapeHtml(session.title || "Session")}</a></li>`,
+        );
+        for (const d of session.dates || []) {
+            // Prologue is a session heading only in the Jump-to UX (skip duplicate date row)
+            if (d.dateKey === "prologue") continue;
+            const label = d.title || d.dateKey;
+            items.push(
+                `<li class="jump-date"><a href="#entry-${d.anchorEntryId}">${escapeHtml(label)}</a></li>`,
+            );
+        }
     }
-  }
-  jumpToList.innerHTML = items.join("");
+    jumpToList.innerHTML = items.join("");
 }
 
 function escapeHtml(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+    return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
 }
 
 /* ---------------------------------------------------------- */
@@ -254,82 +254,82 @@ function escapeHtml(str) {
 /* ---------------------------------------------------------- */
 
 function setupBackToTop() {
-  const btn = document.getElementById("back-to-top");
-  if (!btn) return;
+    const btn = document.getElementById("back-to-top");
+    if (!btn) return;
 
-  let lastY = window.scrollY;
-  let visible = false;
+    let lastY = window.scrollY;
+    let visible = false;
 
-  const setVisible = (show) => {
-    if (show === visible) return;
-    visible = show;
-    btn.classList.toggle("is-visible", show);
-    btn.setAttribute("aria-hidden", show ? "false" : "true");
-  };
+    const setVisible = (show) => {
+        if (show === visible) return;
+        visible = show;
+        btn.classList.toggle("is-visible", show);
+        btn.setAttribute("aria-hidden", show ? "false" : "true");
+    };
 
-  const onScroll = () => {
-    const y = window.scrollY;
-    const goingUp = y < lastY;
-    const farEnough = y > 1000;
-    setVisible(goingUp && farEnough);
-    lastY = y;
-  };
+    const onScroll = () => {
+        const y = window.scrollY;
+        const goingUp = y < lastY;
+        const farEnough = y > 1000;
+        setVisible(goingUp && farEnough);
+        lastY = y;
+    };
 
-  window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
 
-  btn.addEventListener("click", () => {
-    const filters = document.getElementById("format-sidebar");
-    if (filters) {
-      filters.scrollIntoView({ behavior: "instant", block: "start" });
-    } else {
-      window.scrollTo({ top: 0, behavior: "instant" });
-    }
-    setVisible(false);
-  });
+    btn.addEventListener("click", () => {
+        const filters = document.getElementById("format-sidebar");
+        if (filters) {
+            filters.scrollIntoView({ behavior: "instant", block: "start" });
+        } else {
+            window.scrollTo({ top: 0, behavior: "instant" });
+        }
+        setVisible(false);
+    });
 }
 
 function setupJumpToggle() {
-  jumpToggle?.addEventListener("click", () => {
-    const open = jumpSidebar?.classList.toggle("is-open");
-    jumpToggle.setAttribute("aria-expanded", open ? "true" : "false");
-  });
+    jumpToggle?.addEventListener("click", () => {
+        const open = jumpSidebar?.classList.toggle("is-open");
+        jumpToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    });
 }
 
 function setupJumpLinks() {
-  jumpToList?.addEventListener("click", (e) => {
-    const link = e.target.closest("a[href^='#entry-']");
-    if (!link) return;
-    e.preventDefault();
-    const domId = link.getAttribute("href")?.slice(1);
-    if (!domId) return;
-    jumpToDomId(domId);
-  });
+    jumpToList?.addEventListener("click", (e) => {
+        const link = e.target.closest("a[href^='#entry-']");
+        if (!link) return;
+        e.preventDefault();
+        const domId = link.getAttribute("href")?.slice(1);
+        if (!domId) return;
+        jumpToDomId(domId);
+    });
 }
 
 function setupFormatControls() {
-  const sessionCheck = document.getElementById("session-check");
-  const formatDropdown = document.getElementById("format-dropdown");
+    const sessionCheck = document.getElementById("session-check");
+    const formatDropdown = document.getElementById("format-dropdown");
 
-  sessionCheck?.addEventListener("change", () => {
-    document.querySelectorAll(".session-title").forEach((el) => {
-      el.classList.toggle("hidden", !sessionCheck.checked);
+    sessionCheck?.addEventListener("change", () => {
+        document.querySelectorAll(".session-title").forEach((el) => {
+            el.classList.toggle("hidden", !sessionCheck.checked);
+        });
     });
-  });
 
-  formatDropdown?.addEventListener("change", () => {
-    applyFormatToBlocks(document.getElementById("travelogue-sessions"));
-  });
+    formatDropdown?.addEventListener("change", () => {
+        applyFormatToBlocks(document.getElementById("travelogue-sessions"));
+    });
 }
 
 function updateAdminPanel() {
-  const writer = getCurrentWriter();
-  if (!adminPanel) return;
-  adminPanel.classList.toggle("hidden", !(writer && writer.isAdmin));
+    const writer = getCurrentWriter();
+    if (!adminPanel) return;
+    adminPanel.classList.toggle("hidden", !(writer && writer.isAdmin));
 }
 
 async function refreshToc() {
-  tocData = await apiGet("/travelogue/toc");
-  renderJumpToList();
+    tocData = await apiGet("/travelogue/toc");
+    renderJumpToList();
 }
 
 /* ---------------------------------------------------------- */
@@ -337,55 +337,55 @@ async function refreshToc() {
 /* ---------------------------------------------------------- */
 
 document.addEventListener("DOMContentLoaded", async () => {
-  await initAuth();
-  initEditChrome();
+    await initAuth();
+    initEditChrome();
 
-  try {
-    await refreshToc();
-  } catch (err) {
-    console.error("TOC load failed", err);
-  }
-
-  await loadSessions(false);
-  setupFormatControls();
-  setupJumpToggle();
-  setupJumpLinks();
-  setupBackToTop();
-  setupInfiniteScroll();
-  updateAdminPanel();
-
-  // Deep-link support: #entry-… may point at a not-yet-loaded session
-  const hashId = location.hash?.replace(/^#/, "");
-  if (hashId?.startsWith("entry-")) {
-    await jumpToDomId(hashId);
-  }
-
-  loadMoreBtn?.addEventListener("click", () => loadSessions(true));
-
-  newSessionForm?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const titleInput = document.getElementById("new-session-title");
-    const title = titleInput?.value?.trim();
-    if (!title) return;
     try {
-      await apiPost("/travelogue/sessions", {
-        title,
-        createEmptyDate: true,
-        showHeading: false,
-        dateTitle: title,
-      });
-      titleInput.value = "";
-      await refreshToc();
-      nextCursor = null;
-      await loadSessions(false);
+        await refreshToc();
     } catch (err) {
-      alert(err.data?.error || err.message || "Could not create session");
+        console.error("TOC load failed", err);
     }
-  });
 
-  onAuthChange(() => {
+    await loadSessions(false);
+    setupFormatControls();
+    setupJumpToggle();
+    setupJumpLinks();
+    setupBackToTop();
+    setupInfiniteScroll();
     updateAdminPanel();
-    // Avoid wiping in-progress edits when login unlocks Edit mode
-    if (!isEditMode()) loadSessions(false);
-  });
+
+    // Deep-link support: #entry-… may point at a not-yet-loaded session
+    const hashId = location.hash?.replace(/^#/, "");
+    if (hashId?.startsWith("entry-")) {
+        await jumpToDomId(hashId);
+    }
+
+    loadMoreBtn?.addEventListener("click", () => loadSessions(true));
+
+    newSessionForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const titleInput = document.getElementById("new-session-title");
+        const title = titleInput?.value?.trim();
+        if (!title) return;
+        try {
+            await apiPost("/travelogue/sessions", {
+                title,
+                createEmptyDate: true,
+                showHeading: false,
+                dateTitle: title,
+            });
+            titleInput.value = "";
+            await refreshToc();
+            nextCursor = null;
+            await loadSessions(false);
+        } catch (err) {
+            alert(err.data?.error || err.message || "Could not create session");
+        }
+    });
+
+    onAuthChange(() => {
+        updateAdminPanel();
+        // Avoid wiping in-progress edits when login unlocks Edit mode
+        if (!isEditMode()) loadSessions(false);
+    });
 });

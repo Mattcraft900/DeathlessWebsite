@@ -1,72 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deathless | Travelogue</title>
-  <link rel="stylesheet" href="/styles/travelogue.css">
-  <script type="module" src="/js/header.js"></script>
-  <script type="module" src="/js/travelogue.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deathless | Travelogue</title>
+    <link rel="stylesheet" href="/styles/travelogue.css">
+    <script type="module" src="/js/header.js"></script>
+    <script type="module" src="/js/travelogue.js"></script>
 </head>
 <body>
-  <header id="site-header"></header>
-  <main>
-    <section id="intro">
-      <h2 id="intro-title" class="page-title">Travelogue</h2>
-      <p id="intro-blurb">
-        This page has the campaign log for the Deathless D&D campaign.
-        It's written in-universe by Lucy, with occasional corrections and insights from
-        Nemah and the rest of the party (each in their own voice style).<br>
-        Both the real-world session dates (plus unofficial names) and the in-game dates
-        are included; note that the in-game dates represent when Lucy wrote in the
-        journal (not necessarily the day the described events happened).
-      </p>
-      <hr>
-      <div id="admin-session-panel" class="hidden">
-        <form id="new-session-form">
-          <label for="new-session-title">New session title</label>
-          <input id="new-session-title" name="title" type="text" required placeholder='e.g. 7.4.26 - "Next Stop"'>
-          <button type="submit" class="auth-btn">Add session</button>
-        </form>
-      </div>
-    </section>
-    <div class="travelogue-layout">
-      <aside class="travelogue-sidebar travelogue-panel" id="format-sidebar">
-        <div id="dropdown-div">
-          <label for="format-dropdown">Formatting:</label>
-          <select id="format-dropdown">
-            <option value="simple">Simple</option>
-            <option value="stylized" selected>Stylized</option>
-          </select>
+    <header id="site-header"></header>
+    <main>
+        <section id="intro">
+            <h2 id="intro-title" class="page-title">Travelogue</h2>
+            <p id="intro-blurb">
+                This page has the campaign log for the Deathless D&D campaign.
+                It's written in-universe by Lucy, with occasional corrections and insights from
+                Nemah and the rest of the party (each in their own voice style).<br>
+                Both the real-world session dates (plus unofficial names) and the in-game dates
+                are included; note that the in-game dates represent when Lucy wrote in the
+                journal (not necessarily the day the described events happened).
+            </p>
+            <hr>
+            <div id="admin-session-panel" class="hidden">
+                <form id="new-session-form">
+                    <label for="new-session-title">New session title</label>
+                    <input id="new-session-title" name="title" type="text" required placeholder='e.g. 7.4.26 - "Next Stop"'>
+                    <button type="submit" class="auth-btn">Add session</button>
+                </form>
+            </div>
+        </section>
+        <div class="travelogue-layout">
+            <aside class="travelogue-sidebar travelogue-panel" id="format-sidebar">
+                <div id="dropdown-div">
+                    <label for="format-dropdown">Formatting:</label>
+                    <select id="format-dropdown">
+                        <option value="simple">Simple</option>
+                        <option value="stylized" selected>Stylized</option>
+                    </select>
+                </div>
+                <div id="checkboxes">
+                    <div class="checkbox-div">
+                        <label for="session-check">Turn off session dates/titles</label>
+                        <input type="checkbox" id="session-check" checked>
+                    </div>
+                </div>
+            </aside>
+            <aside class="travelogue-sidebar travelogue-panel" id="jump-sidebar">
+                <button type="button" class="jump-toggle" id="jump-toggle" aria-expanded="false" aria-controls="jump-to-list">
+                    <span class="jump-toggle-label">Jump to...</span>
+                    <span class="jump-chevron" aria-hidden="true"></span>
+                </button>
+                <h3 class="jump-heading">Jump to...</h3>
+                <div class="jump-list-collapse">
+                    <ul class="sidebar-list jump-list" id="jump-to-list"></ul>
+                </div>
+            </aside>
+            <div class="travelogue-main">
+                <div id="travelogue-sessions"></div>
+                <div id="load-more-wrap">
+                    <button type="button" id="load-more-btn" class="hidden">Load more sessions</button>
+                    <div id="scroll-sentinel" aria-hidden="true"></div>
+                </div>
+            </div>
         </div>
-        <div id="checkboxes">
-          <div class="checkbox-div">
-            <label for="session-check">Turn off session dates/titles</label>
-            <input type="checkbox" id="session-check" checked>
-          </div>
-        </div>
-      </aside>
-      <aside class="travelogue-sidebar travelogue-panel" id="jump-sidebar">
-        <button type="button" class="jump-toggle" id="jump-toggle" aria-expanded="false" aria-controls="jump-to-list">
-          <span class="jump-toggle-label">Jump to...</span>
-          <span class="jump-chevron" aria-hidden="true"></span>
-        </button>
-        <h3 class="jump-heading">Jump to...</h3>
-        <div class="jump-list-collapse">
-          <ul class="sidebar-list jump-list" id="jump-to-list"></ul>
-        </div>
-      </aside>
-      <div class="travelogue-main">
-        <div id="travelogue-sessions"></div>
-        <div id="load-more-wrap">
-          <button type="button" id="load-more-btn" class="hidden">Load more sessions</button>
-          <div id="scroll-sentinel" aria-hidden="true"></div>
-        </div>
-      </div>
-    </div>
-  </main>
-  <button type="button" id="back-to-top" class="back-to-top" aria-hidden="true" aria-label="Back to top">
-    Back to top <span class="back-to-top-arrow" aria-hidden="true">↑</span>
-  </button>
+    </main>
+    <button type="button" id="back-to-top" class="back-to-top" aria-hidden="true" aria-label="Back to top">
+        Back to top <span class="back-to-top-arrow" aria-hidden="true">↑</span>
+    </button>
 </body>
 </html>
