@@ -247,3 +247,21 @@
     margin-top: 0.75em;
     min-width: 8em;
 }
+
+@media screen and (min-width: 600px) {
+    .settings-session {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5em 1em;
+    }
+
+    .settings-section .section-heading {
+        margin-bottom: 0.2em;
+    }
+
+    .settings-preview-label {
+        margin-top: 0.2em;
+    }
+}

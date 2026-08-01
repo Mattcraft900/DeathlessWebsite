@@ -1154,6 +1154,20 @@ footer {
     .header-inner {
         flex-wrap: nowrap;
         gap: 0.5em;
+        align-items: stretch;
+    }
+
+    #settings-btn {
+        width: auto;
+        height: auto;
+        aspect-ratio: auto;
+        align-self: stretch;
+        padding: 0.55em 0.7em;
+    }
+
+    #settings-btn .settings-btn__icon {
+        width: 1.35em;
+        height: 1.35em;
     }
 
     #menu-list {
