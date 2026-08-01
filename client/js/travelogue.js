@@ -150,6 +150,7 @@ async function loadSessions(append = false) {
                 loadMoreBtn.classList.toggle("hidden", !nextCursor);
                 loadMoreBtn.disabled = false;
             }
+            updateActiveJumpLink();
         } catch (err) {
             console.error(err);
             if (!append) {
@@ -226,8 +227,9 @@ function renderJumpToList() {
 
     const items = [];
     for (const session of tocData.sessions || []) {
+        const sessionLabel = displaySessionTitle(session.title || "Session");
         items.push(
-            `<li class="jump-session"><a href="#entry-${session.id}">${escapeHtml(session.title || "Session")}</a></li>`,
+            `<li class="jump-session"><a href="#entry-${session.id}">${escapeHtml(sessionLabel)}</a></li>`,
         );
         for (const d of session.dates || []) {
             // Prologue is a session heading only in the Jump-to UX (skip duplicate date row)
@@ -239,6 +241,15 @@ function renderJumpToList() {
         }
     }
     jumpToList.innerHTML = items.join("");
+    updateActiveJumpLink();
+}
+
+/** Strip leading IRL date + hyphen from TOC labels only (data unchanged). */
+function displaySessionTitle(title) {
+    const stripped = String(title)
+        .replace(/^\d{1,2}\.\d{1,2}\.\d{2,4}\s*[-–—]\s*/, "")
+        .trim();
+    return stripped || title;
 }
 
 function escapeHtml(str) {
@@ -247,6 +258,208 @@ function escapeHtml(str) {
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;");
+}
+
+/* ---------------------------------------------------------- */
+/* -- Jump scroll-spy (desktop)                            -- */
+/* ---------------------------------------------------------- */
+
+/** @returns {number} bottom edge of sticky header in viewport coords */
+function headerBottomY() {
+    const raw = getComputedStyle(document.documentElement)
+        .getPropertyValue("--site-header-height")
+        .trim();
+    const fromVar = Number.parseFloat(raw);
+    if (Number.isFinite(fromVar)) return fromVar;
+    return document.getElementById("site-header")?.offsetHeight ?? 0;
+}
+
+/**
+ * Bounding rects for visual paragraphs inside an entry-blocks container
+ * (runs of nodes split by `.entry-para-break`).
+ * @param {HTMLElement} entryBlocks
+ * @returns {DOMRect[]}
+ */
+function paragraphRectsInBlocks(entryBlocks) {
+    const rects = [];
+    let paraStart = null;
+    let paraEnd = null;
+
+    const commit = () => {
+        if (!paraStart || !paraEnd) return;
+        const range = document.createRange();
+        range.setStartBefore(paraStart);
+        range.setEndAfter(paraEnd);
+        const rect = range.getBoundingClientRect();
+        if (rect.height > 1 && rect.width > 1) rects.push(rect);
+        paraStart = paraEnd = null;
+    };
+
+    for (const node of entryBlocks.childNodes) {
+        if (
+            node.nodeType === Node.ELEMENT_NODE &&
+            node.classList.contains("entry-para-break")
+        ) {
+            commit();
+            continue;
+        }
+        if (!paraStart) paraStart = node;
+        paraEnd = node;
+    }
+    commit();
+    return rects;
+}
+
+/**
+ * Content roots whose paragraphs "belong" to a Jump-to link.
+ * Session links own prologue / undated chunks; date links own their article.
+ * @param {string} domId
+ * @returns {HTMLElement[]}
+ */
+function contentRootsForJumpId(domId) {
+    const el = document.getElementById(domId);
+    if (!el) return [];
+
+    if (el.classList.contains("session-title")) {
+        const session = el.closest(".session-block");
+        if (!session) return [];
+        return [...session.querySelectorAll(".game-date-entry")].filter((entry) => {
+            const id =
+                entry.id ||
+                entry.querySelector(".game-date-heading")?.id ||
+                "";
+            if (!id) return true;
+            return !jumpToList?.querySelector(`li.jump-date > a[href="#${id}"]`);
+        });
+    }
+
+    if (el.classList.contains("game-date-heading")) {
+        const article = el.closest(".game-date-entry");
+        return article ? [article] : [];
+    }
+
+    if (el.classList.contains("game-date-entry")) return [el];
+    return [];
+}
+
+/** @param {DOMRect} rect @returns {boolean} */
+function isParagraphMeaningfullyVisible(rect) {
+    const top = headerBottomY();
+    const bottom = window.innerHeight;
+    const visibleTop = Math.max(rect.top, top);
+    const visibleBottom = Math.min(rect.bottom, bottom);
+    const visibleH = visibleBottom - visibleTop;
+    if (visibleH <= 0) return false;
+    // Fully on-screen, or a solid readable chunk (long paras rarely fit entirely)
+    if (rect.top >= top - 0.5 && rect.bottom <= bottom + 0.5) return true;
+    return visibleH >= Math.min(rect.height * 0.28, 72) || visibleH >= 56;
+}
+
+/** Heading / anchor sits in the upper reading band below the header. */
+function isAnchorInReadingBand(el) {
+    const rect = el.getBoundingClientRect();
+    const top = headerBottomY();
+    const bandBottom = top + (window.innerHeight - top) * 0.42;
+    return rect.bottom > top + 4 && rect.top < bandBottom;
+}
+
+/**
+ * Highlight the earliest readable Jump target. When that content belongs to a
+ * game-date, keep both the date and its parent session lit; when the hit is a
+ * session heading with a visible child date, light that date too.
+ */
+function updateActiveJumpLink() {
+    if (!jumpToList) return;
+    if (!window.matchMedia("(min-width: 900px)").matches) {
+        jumpToList.querySelectorAll("a.is-active").forEach((a) => {
+            a.classList.remove("is-active");
+        });
+        return;
+    }
+
+    const links = [...jumpToList.querySelectorAll('a[href^="#entry-"]')];
+
+    /** @param {HTMLAnchorElement} link */
+    const linkIsReadable = (link) => {
+        const domId = link.getAttribute("href")?.slice(1);
+        if (!domId) return false;
+        const anchor = document.getElementById(domId);
+        const roots = contentRootsForJumpId(domId);
+        const hasVisiblePara = roots.some((root) => {
+            const blocks = root.querySelector(".entry-blocks");
+            if (!blocks) return false;
+            return paragraphRectsInBlocks(blocks).some(isParagraphMeaningfullyVisible);
+        });
+        return hasVisiblePara || Boolean(anchor && isAnchorInReadingBand(anchor));
+    };
+
+    /** @type {HTMLAnchorElement|null} */
+    let primary = null;
+    for (const link of links) {
+        if (linkIsReadable(link)) {
+            primary = link;
+            break;
+        }
+    }
+
+    /** @type {Set<HTMLAnchorElement>} */
+    const activeSet = new Set();
+    if (primary) {
+        activeSet.add(primary);
+
+        const dateItem = primary.closest("li.jump-date");
+        const sessionItem = primary.closest("li.jump-session");
+
+        if (dateItem) {
+            let prev = dateItem.previousElementSibling;
+            while (prev && !prev.classList.contains("jump-session")) {
+                prev = prev.previousElementSibling;
+            }
+            const sessionLink = prev?.querySelector('a[href^="#entry-"]');
+            if (sessionLink instanceof HTMLAnchorElement) activeSet.add(sessionLink);
+        } else if (sessionItem) {
+            let next = sessionItem.nextElementSibling;
+            while (next && next.classList.contains("jump-date")) {
+                const dateLink = next.querySelector('a[href^="#entry-"]');
+                if (dateLink instanceof HTMLAnchorElement && linkIsReadable(dateLink)) {
+                    activeSet.add(dateLink);
+                    break;
+                }
+                next = next.nextElementSibling;
+            }
+        }
+    }
+
+    for (const link of links) {
+        link.classList.toggle("is-active", activeSet.has(link));
+    }
+
+    if (primary) {
+        const scroller = jumpSidebar?.querySelector(".jump-list-collapse");
+        if (scroller) {
+            const linkRect = primary.getBoundingClientRect();
+            const box = scroller.getBoundingClientRect();
+            if (linkRect.top < box.top || linkRect.bottom > box.bottom) {
+                primary.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            }
+        }
+    }
+}
+
+function setupJumpScrollSpy() {
+    let ticking = false;
+    const onScrollOrResize = () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+            updateActiveJumpLink();
+            ticking = false;
+        });
+    };
+
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize, { passive: true });
+    updateActiveJumpLink();
 }
 
 /* ---------------------------------------------------------- */
@@ -278,9 +491,11 @@ function setupBackToTop() {
     window.addEventListener("scroll", onScroll, { passive: true });
 
     btn.addEventListener("click", () => {
-        const filters = document.getElementById("format-sidebar");
-        if (filters) {
-            filters.scrollIntoView({ behavior: "instant", block: "start" });
+        // Sticky sidebars make scrollIntoView(format) land in the wrong place —
+        // go to the real page top (intro / brand content above the grid).
+        const intro = document.getElementById("travelogue-intro");
+        if (intro) {
+            intro.scrollIntoView({ behavior: "instant", block: "start" });
         } else {
             window.scrollTo({ top: 0, behavior: "instant" });
         }
@@ -350,6 +565,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupFormatControls();
     setupJumpToggle();
     setupJumpLinks();
+    setupJumpScrollSpy();
     setupBackToTop();
     setupInfiniteScroll();
     updateAdminPanel();

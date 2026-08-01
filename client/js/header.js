@@ -86,6 +86,15 @@ function buildHeader() {
     inner.append(menuBtn, navCollapse);
     header.append(backdrop, inner);
 
+    const syncHeaderHeight = () => {
+        document.documentElement.style.setProperty(
+            "--site-header-height",
+            `${header.offsetHeight}px`,
+        );
+    };
+    syncHeaderHeight();
+    new ResizeObserver(syncHeaderHeight).observe(header);
+
     initAuth();
 }
 

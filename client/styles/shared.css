@@ -754,16 +754,23 @@ hr,
     background-color: color-mix(in srgb, var(--color-iron) 14%, var(--color-accent));
 }
 
-.character-card .character-img {
+.character-card .character-img-frame {
     width: 240px;
     max-width: 100%;
-    border: solid 2px color-mix(in srgb, var(--color-border) 55%, transparent);
-    border-radius: 50%;
-    display: block;
     margin: 0 auto;
+    border-radius: 50%;
+    padding: 2px;
+    background-color: color-mix(in srgb, var(--color-border) 55%, transparent);
+    overflow: hidden;
+    transition: padding 0.2s ease, background-color 0.2s ease;
+}
+
+.character-card .character-img {
+    display: block;
+    width: 100%;
     aspect-ratio: 1;
     object-fit: cover;
-    transition: border-color 0.2s ease, border-width 0.2s ease;
+    border-radius: 50%;
 }
 
 .character-card .character-name {
@@ -801,16 +808,23 @@ hr,
     pointer-events: none;
 }
 
+/*
+ * Editable affordance: avoid `outline` on these inline spans.
+ * Outlines (and fragmenting shadows) paint per line-box, so wrapped blocks
+ * show thin gaps between lines — especially with outline-offset on desktop.
+ * A sliced background wash stays continuous across wraps.
+ */
 .entry-block[contenteditable="true"]:not([data-empty="true"]) {
-    outline: 1px dashed var(--color-muted);
-    outline-offset: 2px;
+    outline: none;
     border-radius: 2px;
+    padding: 0 0.12em;
+    margin: 0 -0.12em;
+    background-color: color-mix(in srgb, var(--color-muted) 16%, transparent);
 }
 
 .entry-block[contenteditable="true"]:focus {
-    outline: 1px dashed var(--color-oxblood);
-    outline-offset: 2px;
-    border-radius: 2px;
+    outline: none;
+    background-color: color-mix(in srgb, var(--color-oxblood) 9%, transparent);
 }
 
 /* stylized */
@@ -994,9 +1008,9 @@ footer {
         box-shadow: 0 6px 18px color-mix(in srgb, var(--color-iron) 18%, transparent);
     }
 
-    .character-card:hover .character-img {
-        border-width: 4px;
-        border-color: var(--color-oxblood);
+    .character-card:hover .character-img-frame {
+        padding: 4px;
+        background-color: var(--color-oxblood);
     }
 
     .character-card:hover .character-name {

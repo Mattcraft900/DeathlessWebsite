@@ -10,7 +10,9 @@ import { smallSrc } from "./character-images.js";
 function buildCharacterCard(character) {
     const slug = character.slug;
     return `<a href="/characters/${slug}"><div class="character-card ${character.category}-character-card">
-        <img src="${smallSrc(slug)}" alt="Image of ${character.name}" class="character-img" onerror="this.remove()">
+        <div class="character-img-frame">
+            <img src="${smallSrc(slug)}" alt="Image of ${character.name}" class="character-img" onerror="this.parentElement.remove()">
+        </div>
         <h3 class="character-name">${character.name}</h3>
         <p class="character-snippet">${character.snippet || ""}</p>
     </div></a>`;
