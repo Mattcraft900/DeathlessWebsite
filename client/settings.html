@@ -49,10 +49,16 @@
         <section class="settings-section" aria-labelledby="settings-handwriting-heading">
             <h2 id="settings-handwriting-heading" class="section-heading">Handwriting</h2>
             <form id="handwriting-form" class="settings-form" novalidate>
+                <p class="settings-preview-label">Preview</p>
+                <div id="handwriting-preview" class="settings-preview entry-blocks" aria-live="polite"></div>
+
                 <label for="handwriting-color">Color</label>
                 <div class="settings-color-row">
                     <input id="handwriting-color" name="color" type="color" value="#6a2218" aria-label="Color picker">
-                    <input id="handwriting-hex" name="hex" type="text" inputmode="text" spellcheck="false" maxlength="7" placeholder="#6a2218" aria-label="Hex color">
+                    <div class="settings-color-fields">
+                        <p class="settings-color-hint" id="handwriting-hex-hint">Tap the square or enter a hex code</p>
+                        <input id="handwriting-hex" name="hex" type="text" inputmode="text" spellcheck="false" maxlength="7" placeholder="#6a2218" aria-label="Hex color" aria-describedby="handwriting-hex-hint">
+                    </div>
                 </div>
 
                 <div class="settings-font-label-row">
@@ -64,21 +70,16 @@
                 <input id="handwriting-font" name="font" type="text" spellcheck="false" placeholder="e.g. Kalam" autocomplete="off">
                 <div id="font-help" class="settings-help hidden" hidden>
                     <p>
-                        Open <a
-                        href="https://fonts.google.com/?preview.text=Then%20take%20of%20thyself%20strength%20in%20in%20death,%20borne%20in%20tears%20of%20purest%20silver,%20and%20in%20so%20doing%20curse%20thyself%20to%20existence,%20now%20and%20forever%20deathless.&amp;categoryFilters=Calligraphy:%2FScript%2FHandwritten"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        >Google Fonts</a>, pick a handwritten face you like, then copy the
-                        <strong>exact font name</strong> (e.g. <code>Caveat</code> or
+                        Open <a  href="https://fonts.google.com/?preview.text=Then%20take%20of%20thyself%20strength%20in%20in%20death,%20borne%20in%20tears%20of%20purest%20silver,%20and%20in%20so%20doing%20curse%20thyself%20to%20existence,%20now%20and%20forever%20deathless.&amp;categoryFilters=Calligraphy:%2FScript%2FHandwritten"
+                        target="_blank" rel="noopener noreferrer"
+                        >Google Fonts</a>, pick a handwritten font you like, then copy the
+                        <strong>exact font family name</strong> (e.g. <code>Caveat</code> or
                         <code>Indie Flower</code>) and paste it in the Font field above.
                     </p>
                     <p class="settings-help__tip">
                         Tip: try sorting by 'Most Popular' or 'Trending' to see better fonts.
                     </p>
                 </div>
-
-                <p class="settings-preview-label">Preview</p>
-                <div id="handwriting-preview" class="settings-preview entry-blocks" aria-live="polite"></div>
 
                 <p id="handwriting-error" class="auth-error hidden" role="alert"></p>
                 <p id="handwriting-success" class="settings-success hidden" role="status"></p>
