@@ -619,7 +619,7 @@ body.edit-mode {
     margin: 0;
     font-size: 2em;
     font-weight: normal;
-    color: var(--color-cream);
+    color: var(--color-parchment);
     width: max-content;
     max-width: calc(100% - 2rem);
     padding: 0.12em 0.35em;
