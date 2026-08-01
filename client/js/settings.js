@@ -33,7 +33,9 @@ const PREVIEW_SNIPPETS = [
     { slug: "enza", text: "Wait, whose heroes?" },
     { slug: "lucy", text: "Use this as a pre-view", startsParagraph: true },
     { slug: "luark", text: "It's just spelled preview, no hyphen" },
-    { slug: "lucy", text: "of what your handwriting looks like alongside everyone else's." },
+    { slug: "lucy", text: "of what your handwriting" },
+    { slug: "dm", text: "(or the DM equivalent)" },
+    { slug: "lucy", text: "looks like alongside everyone else's." },
 ];
 
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
