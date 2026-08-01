@@ -20,6 +20,8 @@ export const writers = pgTable("writers", {
     displayName: text("display_name").notNull(),
     pinHash: text("pin_hash").notNull(),
     cssClass: text("css_class").notNull(),
+    handwritingColor: text("handwriting_color"),
+    handwritingFont: text("handwriting_font"),
     isAdmin: boolean("is_admin").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

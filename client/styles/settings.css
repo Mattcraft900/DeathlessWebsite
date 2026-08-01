@@ -1,0 +1,220 @@
+@import './shared.css';
+
+.settings-page {
+    padding: 0 1em 2.5em;
+    max-width: 36em;
+    margin: 0 auto;
+}
+
+.settings-session {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.65em;
+    margin: 0 0 0.25em;
+    color: var(--color-ink);
+    text-align: center;
+}
+
+.settings-session__line {
+    margin: 0;
+}
+
+.settings-session__name {
+    color: var(--color-heading);
+    font-weight: 600;
+}
+
+.settings-logout {
+    margin: 0;
+    padding: 0.45em 1.25em;
+    background: color-mix(in srgb, var(--color-dust) 55%, var(--color-sand));
+    color: var(--color-ink);
+    border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.settings-logout:hover,
+.settings-logout:focus-visible {
+    background: color-mix(in srgb, var(--color-dust) 70%, var(--color-sand));
+}
+
+.settings-section .section-heading {
+    margin-top: 0.25em;
+    font-family: var(--subheading-font);
+    font-weight: normal;
+    text-decoration: none;
+}
+
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45em;
+    margin-bottom: 0.5em;
+}
+
+.settings-form label {
+    margin-top: 0.55em;
+    font-size: 0.9em;
+    color: var(--ink-soft);
+}
+
+.settings-font-label-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35em;
+    margin-top: 0.55em;
+}
+
+.settings-font-label-row label {
+    margin-top: 0;
+}
+
+.settings-help-toggle {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--color-link);
+    font-family: var(--paragraph-font);
+    font-size: 0.8em;
+    cursor: pointer;
+}
+
+.settings-help-toggle:hover,
+.settings-help-toggle:focus-visible {
+    color: var(--color-link-hover);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.settings-form input[type="password"],
+.settings-form input[type="text"],
+.settings-form input:not([type]) {
+    width: 100%;
+    padding: 0.55em 0.65em;
+    border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+    border-radius: 4px;
+    background: var(--color-bg-elevated);
+    color: var(--color-ink);
+    font-family: var(--paragraph-font);
+    font-size: 1em;
+}
+
+.settings-color-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65em;
+}
+
+.settings-color-row input[type="color"] {
+    width: 3em;
+    height: 2.5em;
+    padding: 0.15em;
+    border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+    border-radius: 4px;
+    background: var(--color-bg-elevated);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.settings-color-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-help {
+    margin: 0.35em 0 0.5em;
+    padding: 0.75em 0.85em;
+    background: color-mix(in srgb, var(--color-sand) 55%, var(--color-bg));
+    border: 1px solid color-mix(in srgb, var(--color-border) 45%, transparent);
+    border-radius: 4px;
+    font-size: 0.85em;
+    line-height: 1.45;
+    color: var(--ink-soft);
+}
+
+.settings-help p + p {
+    margin-top: 0.65em;
+}
+
+.settings-help a {
+    color: var(--color-oxblood);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-weight: 600;
+}
+
+.settings-help a:hover,
+.settings-help a:focus-visible {
+    color: var(--color-oxblood-deep);
+}
+
+.settings-help__tip {
+    font-size: 0.95em;
+}
+
+.settings-help code {
+    font-size: 0.95em;
+    color: var(--color-ink);
+}
+
+.settings-preview-label {
+    margin-top: 0.85em;
+    font-size: 0.9em;
+    color: var(--ink-soft);
+}
+
+.settings-preview {
+    margin: 0.25em 0 0.75em;
+    padding: 0.85em 0.9em;
+    background: var(--color-bg-elevated);
+    border: 1px solid color-mix(in srgb, var(--color-border) 45%, transparent);
+    border-radius: 4px;
+    line-height: 1.55;
+    min-height: 4.5em;
+}
+
+.settings-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0.65em;
+    margin-top: 0.5em;
+    width: 100%;
+}
+
+.settings-actions .auth-btn {
+    flex: 1;
+    margin: 0;
+    text-align: center;
+    padding: 0.65em 0.5em;
+}
+
+.settings-actions .auth-btn-ghost {
+    background: color-mix(in srgb, var(--color-dust) 40%, var(--color-bg-elevated));
+    border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+    border-radius: 4px;
+    text-decoration: none;
+    color: var(--color-ink);
+}
+
+.settings-actions .auth-btn-ghost:hover,
+.settings-actions .auth-btn-ghost:focus-visible {
+    background: color-mix(in srgb, var(--color-dust) 55%, var(--color-bg-elevated));
+    text-decoration: none;
+}
+
+.settings-success {
+    color: var(--color-moss);
+    font-size: 0.9em;
+    margin: 0.25em 0;
+}
+
+#change-pin-form > .auth-btn {
+    align-self: center;
+    margin-top: 0.75em;
+    min-width: 8em;
+}

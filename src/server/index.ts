@@ -79,12 +79,16 @@ async function createApp() {
         app.get("/characters/:slug", (req, res, next) =>
             sendViteHtml(vite, req, res, next, "character.html"),
         );
+        app.get("/settings", (req, res, next) =>
+            sendViteHtml(vite, req, res, next, "settings.html"),
+        );
     } else {
         app.use(express.static(resolve(root, "dist/client")));
         app.get("/", (_req, res) => sendProdHtml(res, "index.html"));
         app.get("/travelogue", (_req, res) => sendProdHtml(res, "travelogue.html"));
         app.get("/characters", (_req, res) => sendProdHtml(res, "characters.html"));
         app.get("/characters/:slug", (_req, res) => sendProdHtml(res, "character.html"));
+        app.get("/settings", (_req, res) => sendProdHtml(res, "settings.html"));
     }
 
     app.use(

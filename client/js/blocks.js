@@ -29,6 +29,7 @@
 import { generateKeyBetween } from "fractional-indexing";
 import { apiPut } from "./api.js";
 import { getCurrentWriter } from "./auth-ui.js";
+import { applyHandwritingStyle } from "./fonts.js";
 
 /* ---------------------------------------------------------- */
 /* -- Format mode                                          -- */
@@ -72,6 +73,11 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
         span.dataset.sortRank = block.sortRank;
         setStartsParagraph(span, Boolean(block.startsParagraph));
         span.textContent = block.body;
+        applyHandwritingStyle(
+            span,
+            block.writerHandwritingColor,
+            block.writerHandwritingFont,
+        );
 
         // Admin can edit any voice; everyone else only their own writerId.
         const canEdit =
@@ -407,6 +413,7 @@ function handleEnterInOwnBlock(span, writer, e) {
         );
         empty.contentEditable = "true";
         empty.textContent = "";
+        applyHandwritingStyle(empty, writer.handwritingColor, writer.handwritingFont);
         setStartsParagraph(empty, readStartsParagraph(span));
         setStartsParagraph(span, true);
         wireOwnEditable(empty);
@@ -435,6 +442,10 @@ function handleEnterInOwnBlock(span, writer, e) {
     );
     neu.contentEditable = "true";
     neu.textContent = after;
+    neu.style.setProperty("--writer-color", span.style.getPropertyValue("--writer-color"));
+    neu.style.setProperty("--writer-font", span.style.getPropertyValue("--writer-font"));
+    if (!neu.style.getPropertyValue("--writer-color")) neu.style.removeProperty("--writer-color");
+    if (!neu.style.getPropertyValue("--writer-font")) neu.style.removeProperty("--writer-font");
     setStartsParagraph(neu, true);
     wireOwnEditable(neu);
     span.after(neu);
@@ -619,6 +630,7 @@ function insertOwnBlockAfter(afterSpan, writer) {
     );
     span.contentEditable = "true";
     span.textContent = "";
+    applyHandwritingStyle(span, writer.handwritingColor, writer.handwritingFont);
     setStartsParagraph(span, false);
     wireOwnEditable(span);
     afterSpan.after(span);
@@ -648,6 +660,7 @@ function insertOwnBlockBefore(beforeSpan, writer) {
     );
     span.contentEditable = "true";
     span.textContent = "";
+    applyHandwritingStyle(span, writer.handwritingColor, writer.handwritingFont);
     setStartsParagraph(span, false);
     wireOwnEditable(span);
     beforeSpan.before(span);
@@ -718,6 +731,7 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
     own.dataset.sortRank = midRank;
     own.contentEditable = "true";
     own.textContent = "";
+    applyHandwritingStyle(own, writer.handwritingColor, writer.handwritingFont);
     setStartsParagraph(own, false);
     wireOwnEditable(own);
 
@@ -728,6 +742,20 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
     continuation.dataset.splitContinuation = "1";
     continuation.contentEditable = "false";
     continuation.textContent = after;
+    continuation.style.setProperty(
+        "--writer-color",
+        foreignSpan.style.getPropertyValue("--writer-color"),
+    );
+    continuation.style.setProperty(
+        "--writer-font",
+        foreignSpan.style.getPropertyValue("--writer-font"),
+    );
+    if (!continuation.style.getPropertyValue("--writer-color")) {
+        continuation.style.removeProperty("--writer-color");
+    }
+    if (!continuation.style.getPropertyValue("--writer-font")) {
+        continuation.style.removeProperty("--writer-font");
+    }
     setStartsParagraph(continuation, false);
     continuation.title = "Click where you want to insert your commentary";
     continuation.addEventListener("click", (e) => {
@@ -954,6 +982,7 @@ function insertOwnBlockAtEnd(container, writer) {
     span.dataset.sortRank = generateKeyBetween(last?.dataset.sortRank ?? null, null);
     span.contentEditable = "true";
     span.textContent = "";
+    applyHandwritingStyle(span, writer.handwritingColor, writer.handwritingFont);
     setStartsParagraph(span, blocks.length > 0);
     wireOwnEditable(span);
     container.appendChild(span);

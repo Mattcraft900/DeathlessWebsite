@@ -34,6 +34,8 @@ const blockSelect = {
     writerSlug: writers.slug,
     writerCssClass: writers.cssClass,
     writerDisplayName: writers.displayName,
+    writerHandwritingColor: writers.handwritingColor,
+    writerHandwritingFont: writers.handwritingFont,
 };
 
 entriesRouter.get("/:id", async (req, res, next) => {

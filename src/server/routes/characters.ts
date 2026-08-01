@@ -61,6 +61,8 @@ charactersRouter.get("/:slug", async (req, res, next) => {
                     writerSlug: writers.slug,
                     writerCssClass: writers.cssClass,
                     writerDisplayName: writers.displayName,
+                    writerHandwritingColor: writers.handwritingColor,
+                    writerHandwritingFont: writers.handwritingFont,
                 })
                 .from(blocks)
                 .innerJoin(writers, eq(blocks.writerId, writers.id))

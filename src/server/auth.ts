@@ -15,7 +15,13 @@ const MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 
 export type SessionWriter = Pick<
     Writer,
-    "id" | "slug" | "displayName" | "cssClass" | "isAdmin"
+    | "id"
+    | "slug"
+    | "displayName"
+    | "cssClass"
+    | "handwritingColor"
+    | "handwritingFont"
+    | "isAdmin"
 >;
 
 function secret(): string {
@@ -78,6 +84,8 @@ export async function loadSessionWriter(req: Request): Promise<SessionWriter | n
             slug: writers.slug,
             displayName: writers.displayName,
             cssClass: writers.cssClass,
+            handwritingColor: writers.handwritingColor,
+            handwritingFont: writers.handwritingFont,
             isAdmin: writers.isAdmin,
         })
         .from(writers)
@@ -123,6 +131,8 @@ export function publicWriter(writer: SessionWriter) {
         slug: writer.slug,
         displayName: writer.displayName,
         cssClass: writer.cssClass,
+        handwritingColor: writer.handwritingColor ?? null,
+        handwritingFont: writer.handwritingFont ?? null,
         isAdmin: writer.isAdmin,
     };
 }

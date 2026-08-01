@@ -16,6 +16,7 @@ export default defineConfig({
                 travelogue: resolve(__dirname, "client/travelogue.html"),
                 characters: resolve(__dirname, "client/characters.html"),
                 character: resolve(__dirname, "client/character.html"),
+                settings: resolve(__dirname, "client/settings.html"),
             },
         },
     },

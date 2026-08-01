@@ -236,6 +236,15 @@ export async function logoutWriter() {
     notifyAuthChange();
 }
 
+/**
+ * Replace the in-memory session writer (e.g. after handwriting save).
+ * @param {object|null} writer
+ */
+export function setCurrentWriter(writer) {
+    currentWriter = writer;
+    notifyAuthChange();
+}
+
 /* ---------------------------------------------------------- */
 /* -- Account & discard confirm                            -- */
 /* ---------------------------------------------------------- */

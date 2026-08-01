@@ -38,17 +38,19 @@ Base URL: `/api`. All endpoints return JSON unless noted. Session auth uses the 
     "slug": "lucy",
     "displayName": "Lucy",
     "cssClass": "voice-lucy",
+    "handwritingColor": "#6a2218",
+    "handwritingFont": "Indie Flower",
     "isAdmin": true
   }
 }
 ```
-`writer` is `null` when not logged in.
+`writer` is `null` when not logged in. `handwritingColor` / `handwritingFont` are `null` until the writer saves custom values on Settings (font then falls back to the site paragraph font; color falls back to the voice CSS default).
 
 ---
 
 ### `GET /api/auth/writers`
 
-**Use case:** Populate the login dropdown with available writer personas (no PINs).
+**Use case:** Populate the login dropdown with available writer personas (no PINs); also used by Settings handwriting preview.
 
 **Auth:** None
 
@@ -61,6 +63,8 @@ Base URL: `/api`. All endpoints return JSON unless noted. Session auth uses the 
       "slug": "lucy",
       "displayName": "Lucy",
       "cssClass": "voice-lucy",
+      "handwritingColor": null,
+      "handwritingFont": null,
       "isAdmin": true
     }
   ]
@@ -80,11 +84,7 @@ Base URL: `/api`. All endpoints return JSON unless noted. Session auth uses the 
 { "slug": "lucy", "pin": "deathless" }
 ```
 
-**Response 200:** `{ "writer": { ...publicWriter } }`
-
-**Response 400:** Missing slug or pin
-
-**Response 401:** Invalid credentials
+**Response 200:** same `writer` shape as `/me` (including handwriting fields).
 
 ---
 
@@ -114,6 +114,39 @@ Base URL: `/api`. All endpoints return JSON unless noted. Session auth uses the 
 **Response 400:** Invalid body (new PIN must be ≥ 4 characters)
 
 **Response 401:** Wrong current PIN or not logged in
+
+---
+
+### `POST /api/auth/handwriting`
+
+**Use case:** Logged-in writer updates their stylized handwriting color and Google Fonts family name (Settings page).
+
+**Auth:** Required (session cookie)
+
+**Body:**
+```json
+{ "color": "#7a3d62", "font": "Kalam" }
+```
+`font` may be `""` to clear a custom font (revert to paragraph font). `color` is required hex (`#rrggbb`).
+
+**Response 200:**
+```json
+{
+  "writer": {
+    "id": "uuid",
+    "slug": "nemah",
+    "displayName": "Nemah",
+    "cssClass": "voice-nemah",
+    "handwritingColor": "#7a3d62",
+    "handwritingFont": "Kalam",
+    "isAdmin": false
+  }
+}
+```
+
+**Response 400:** Invalid color or font string
+
+**Response 401:** Not logged in
 
 ---
 
@@ -191,7 +224,9 @@ Ordered by `sortRank`.
         "sortRank": "a0",
         "writerSlug": "lucy",
         "writerCssClass": "voice-lucy",
-        "writerDisplayName": "Lucy"
+        "writerDisplayName": "Lucy",
+        "writerHandwritingColor": null,
+        "writerHandwritingFont": null
       }
     ]
   }

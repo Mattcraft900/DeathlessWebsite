@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deathless | Settings</title>
+    <link rel="icon" href="/images/icon-of-sorrow.svg" type="image/svg+xml">
+    <link rel="icon" href="/images/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="/images/icon-of-sorrow-180.png">
+    <link rel="stylesheet" href="/styles/settings.css">
+    <script type="module" src="/js/header.js"></script>
+    <script type="module" src="/js/settings.js"></script>
+</head>
+<body>
+    <header id="site-header"></header>
+    <main id="main-content" tabindex="-1" class="settings-page">
+        <section class="page-intro" aria-labelledby="settings-title">
+            <h1 id="settings-title" class="page-title">Settings</h1>
+            <div class="settings-session">
+                <p class="settings-session__line">
+                    <span class="settings-session__label">Logged in as:</span>
+                    <span id="settings-writer-name" class="settings-session__name"></span>
+                </p>
+                <button type="button" id="settings-logout" class="auth-btn settings-logout">Logout</button>
+            </div>
+            <hr class="section-rule" aria-hidden="true">
+        </section>
+
+        <section class="settings-section" aria-labelledby="settings-pin-heading">
+            <h2 id="settings-pin-heading" class="section-heading">Change PIN</h2>
+            <form id="change-pin-form" class="settings-form" novalidate>
+                <label for="pin-current">Current PIN</label>
+                <input id="pin-current" name="currentPin" type="password" autocomplete="current-password" required>
+
+                <label for="pin-new">New PIN</label>
+                <input id="pin-new" name="newPin" type="password" autocomplete="new-password" required minlength="4">
+
+                <label for="pin-confirm">Confirm new PIN</label>
+                <input id="pin-confirm" name="confirmPin" type="password" autocomplete="new-password" required minlength="4">
+
+                <p id="pin-error" class="auth-error hidden" role="alert"></p>
+                <p id="pin-success" class="settings-success hidden" role="status"></p>
+
+                <button type="submit" id="pin-submit" class="auth-btn" disabled>Submit</button>
+            </form>
+            <hr class="section-rule" aria-hidden="true">
+        </section>
+
+        <section class="settings-section" aria-labelledby="settings-handwriting-heading">
+            <h2 id="settings-handwriting-heading" class="section-heading">Handwriting</h2>
+            <form id="handwriting-form" class="settings-form" novalidate>
+                <label for="handwriting-color">Color</label>
+                <div class="settings-color-row">
+                    <input id="handwriting-color" name="color" type="color" value="#6a2218" aria-label="Color picker">
+                    <input id="handwriting-hex" name="hex" type="text" inputmode="text" spellcheck="false" maxlength="7" placeholder="#6a2218" aria-label="Hex color">
+                </div>
+
+                <div class="settings-font-label-row">
+                    <label for="handwriting-font">Font</label>
+                    <button type="button" id="font-help-toggle" class="settings-help-toggle" aria-expanded="false" aria-controls="font-help">
+                        (How do I do this?)
+                    </button>
+                </div>
+                <input id="handwriting-font" name="font" type="text" spellcheck="false" placeholder="e.g. Kalam" autocomplete="off">
+                <div id="font-help" class="settings-help hidden" hidden>
+                    <p>
+                        Open <a
+                        href="https://fonts.google.com/?preview.text=Then%20take%20of%20thyself%20strength%20in%20in%20death,%20borne%20in%20tears%20of%20purest%20silver,%20and%20in%20so%20doing%20curse%20thyself%20to%20existence,%20now%20and%20forever%20deathless.&amp;categoryFilters=Calligraphy:%2FScript%2FHandwritten"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        >Google Fonts</a>, pick a handwritten face you like, then copy the
+                        <strong>exact font name</strong> (e.g. <code>Caveat</code> or
+                        <code>Indie Flower</code>) and paste it in the Font field above.
+                    </p>
+                    <p class="settings-help__tip">
+                        Tip: try sorting by 'Most Popular' or 'Trending' to see better fonts.
+                    </p>
+                </div>
+
+                <p class="settings-preview-label">Preview</p>
+                <div id="handwriting-preview" class="settings-preview entry-blocks" aria-live="polite"></div>
+
+                <p id="handwriting-error" class="auth-error hidden" role="alert"></p>
+                <p id="handwriting-success" class="settings-success hidden" role="status"></p>
+
+                <div class="settings-actions">
+                    <button type="submit" id="handwriting-save" class="auth-btn" disabled>Save</button>
+                    <button type="button" id="handwriting-discard" class="auth-btn auth-btn-ghost" disabled>Discard</button>
+                </div>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

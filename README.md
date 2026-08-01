@@ -127,7 +127,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 - [ ] On a *new branch*, try out pagination instead of infinite scroll on the travelogue page
 - [ ] UX for adding new travelogue entries
 - [ ] UX for adding new characters
-- [ ] UX for players to update their own font & color (same place as reset PIN?)
+- [x] UX for players to update their own font & color (same place as reset PIN?)
 - [ ] "Dirty warnings" on navigation or reload while in Edit mode
 - [ ] Allow players to edit/add their own character's stats on the character page
 

@@ -104,6 +104,7 @@
 
     nav a,
     #menu-btn,
+    #settings-btn,
     .edit-fab,
     .edit-footer-btn,
     .edit-desktop-bar-btn,
@@ -236,17 +237,32 @@ header.menu-open .menu-backdrop {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     background-color: var(--nav-background-color);
 }
 
-/* Mobile-only menu button */
-#menu-btn {
+/* Header icon buttons (settings gear + mobile menu) */
+#menu-btn,
+#settings-btn {
     background-color: inherit;
     border: none;
     padding: 10px;
     width: 50px;
     aspect-ratio: 1/1;
+    color: var(--nav-link-color);
+    flex-shrink: 0;
+}
+
+#settings-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#settings-btn .settings-btn__icon {
+    width: 100%;
+    height: 100%;
+    display: block;
 }
 
 #menu-btn span,
@@ -259,9 +275,11 @@ header.menu-open .menu-backdrop {
     transition: transform 0.3s, opacity 0.3s;
 }
 
-#menu-btn:hover {
+#menu-btn:hover,
+#settings-btn:hover {
     cursor: pointer;
     background-color: var(--nav-hover-background-color);
+    color: var(--nav-hover-link-color);
 }
 
 #menu-btn:hover span,
@@ -985,41 +1003,41 @@ hr,
     }
 }
 
-/* stylized */
+/* stylized — font defaults to paragraph; per-writer overrides via --writer-* */
 .voice-lucy.stylized,
 .entry-block.voice-lucy.stylized {
-    font-family: var(--lucy-font);
-    color: var(--lucy-color);
+    font-family: var(--writer-font, var(--paragraph-font));
+    color: var(--writer-color, var(--lucy-color));
 }
 
 .voice-nemah.stylized,
 .entry-block.voice-nemah.stylized {
-    font-family: var(--nemah-font);
-    color: var(--nemah-color);
+    font-family: var(--writer-font, var(--paragraph-font));
+    color: var(--writer-color, var(--nemah-color));
 }
 
 .voice-luark.stylized,
 .entry-block.voice-luark.stylized {
-    font-family: var(--nemah-font);
-    color: var(--luark-color);
+    font-family: var(--writer-font, var(--paragraph-font));
+    color: var(--writer-color, var(--luark-color));
 }
 
 .voice-enza.stylized,
 .entry-block.voice-enza.stylized {
-    font-family: var(--lucy-font);
-    color: var(--enza-color);
+    font-family: var(--writer-font, var(--paragraph-font));
+    color: var(--writer-color, var(--enza-color));
 }
 
 .voice-chesco.stylized,
 .entry-block.voice-chesco.stylized {
-    font-family: var(--nemah-font);
-    color: var(--chesco-color);
+    font-family: var(--writer-font, var(--paragraph-font));
+    color: var(--writer-color, var(--chesco-color));
 }
 
 .voice-dm.stylized,
 .entry-block.voice-dm.stylized {
-    font-family: var(--heading-font);
-    color: var(--dm-color);
+    font-family: var(--writer-font, var(--paragraph-font));
+    color: var(--writer-color, var(--dm-color));
     font-size: 0.95em;
     font-weight: 500;
 }
