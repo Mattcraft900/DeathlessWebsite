@@ -34,36 +34,51 @@
             </div>
         </section>
         <div class="travelogue-layout">
-            <aside class="travelogue-sidebar travelogue-panel" id="format-sidebar">
-                <div class="format-controls" id="format-controls">
-                    <label for="format-dropdown">Formatting:</label>
-                    <select id="format-dropdown">
-                        <option value="simple">Simple</option>
-                        <option value="stylized" selected>Stylized</option>
-                    </select>
-                </div>
-                <div class="format-controls__options" id="checkboxes">
-                    <div class="checkbox-div">
-                        <label for="session-check">Turn off session dates/titles</label>
-                        <input type="checkbox" id="session-check" checked>
+            <div class="travelogue-sidebar-col travelogue-sidebar-col--format">
+                <aside class="travelogue-sidebar travelogue-panel" id="format-sidebar">
+                    <button type="button" class="edit-sidebar-btn" aria-label="Edit" title="Edit · Hold for account">
+                        <svg class="edit-sidebar-btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
+                        </svg>
+                        <span class="edit-sidebar-btn__label">Edit</span>
+                    </button>
+                    <div class="format-controls" id="format-controls">
+                        <label for="format-dropdown">Formatting:</label>
+                        <select id="format-dropdown">
+                            <option value="simple">Simple</option>
+                            <option value="stylized" selected>Stylized</option>
+                        </select>
                     </div>
-                </div>
-            </aside>
-            <aside class="travelogue-sidebar travelogue-panel" id="jump-sidebar">
-                <button type="button" class="jump-toggle" id="jump-toggle" aria-expanded="false" aria-controls="jump-to-list">
-                    <span class="jump-toggle-label">Jump to...</span>
-                    <span class="jump-chevron" aria-hidden="true"></span>
-                </button>
-                <h2 class="jump-heading">Jump to...</h2>
-                <div class="jump-list-collapse">
-                    <ul class="sidebar-list jump-list" id="jump-to-list"></ul>
-                </div>
-            </aside>
+                    <div class="format-controls__options" id="checkboxes">
+                        <div class="checkbox-div">
+                            <label for="session-check">Turn off session dates/titles</label>
+                            <input type="checkbox" id="session-check" checked>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+            <div class="travelogue-sidebar-col travelogue-sidebar-col--jump">
+                <aside class="travelogue-sidebar travelogue-panel" id="jump-sidebar">
+                    <button type="button" class="jump-toggle" id="jump-toggle" aria-expanded="false" aria-controls="jump-to-list">
+                        <span class="jump-toggle-label">Jump to...</span>
+                        <span class="jump-chevron" aria-hidden="true"></span>
+                    </button>
+                    <h2 class="jump-heading">Jump to...</h2>
+                    <div class="jump-list-collapse">
+                        <ul class="sidebar-list jump-list" id="jump-to-list"></ul>
+                    </div>
+                </aside>
+            </div>
             <div class="travelogue-main">
                 <div id="travelogue-sessions"></div>
                 <div id="load-more-wrap">
                     <button type="button" id="load-more-btn" class="hidden">Load more sessions</button>
                     <div id="scroll-sentinel" aria-hidden="true"></div>
+                </div>
+                <div class="travelogue-end-nav">
+                    <button type="button" class="travelogue-end-top" id="travelogue-end-top">
+                        Back to top <span aria-hidden="true">↑</span>
+                    </button>
                 </div>
             </div>
         </div>

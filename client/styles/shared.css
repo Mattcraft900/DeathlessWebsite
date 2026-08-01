@@ -106,6 +106,8 @@
     #menu-btn,
     .edit-fab,
     .edit-footer-btn,
+    .edit-desktop-bar-btn,
+    .edit-sidebar-btn,
     .back-to-top,
     #load-more-btn {
         -webkit-tap-highlight-color: color-mix(in srgb, var(--color-cream) 16%, transparent);
@@ -479,15 +481,17 @@ nav a {
 
 
 /* ---------------------------------------------------------- */
-/* -- Edit chrome (FAB / Save-Cancel footer)               -- */
+/* -- Edit chrome (FAB / Save-Cancel footer / desktop bar) -- */
 /* ---------------------------------------------------------- */
 .edit-fab,
-.edit-footer {
+.edit-footer,
+.edit-desktop-bar {
     transition: transform 0.25s ease, opacity 0.25s ease;
 }
 
 .edit-fab[hidden],
-.edit-footer[hidden] {
+.edit-footer[hidden],
+.edit-desktop-bar[hidden] {
     display: none !important;
 }
 
@@ -596,9 +600,137 @@ nav a {
     outline: none;
 }
 
-/* Room for the fixed Save/Cancel bar while editing */
+/* Compact desktop Save/Cancel bar — not scroll-hidden */
+.edit-desktop-bar {
+    position: fixed;
+    z-index: 900;
+    left: 50%;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+    background: var(--color-nav-bg);
+    box-shadow: 0 6px 24px var(--color-shadow);
+}
+
+.edit-desktop-bar-btn {
+    min-width: 5.5rem;
+    min-height: 2.25rem;
+    padding: 0.35em 0.9em;
+    border: none;
+    border-radius: 6px;
+    font-family: var(--heading-font);
+    font-size: 0.95em;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.edit-desktop-bar-save {
+    background: var(--color-accent);
+    color: var(--color-oxblood);
+}
+
+.edit-desktop-bar-save:hover,
+.edit-desktop-bar-save:focus-visible {
+    background: var(--color-cream);
+    outline: none;
+}
+
+.edit-desktop-bar-save:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.edit-desktop-bar-cancel {
+    background: transparent;
+    color: var(--color-cream);
+    border: 1px solid var(--color-border);
+}
+
+.edit-desktop-bar-cancel:hover,
+.edit-desktop-bar-cancel:focus-visible {
+    background: color-mix(in srgb, var(--color-cream) 10%, transparent);
+    outline: none;
+}
+
+/* Sidebar Edit / Save (desktop format columns) */
+.edit-sidebar-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    width: 72%;
+    align-self: center;
+    margin: 0 auto 1em;
+    padding: 0.5em 0.85em;
+    border: 1px solid var(--color-oxblood-deep);
+    border-radius: 8px;
+    background: var(--color-oxblood);
+    color: var(--color-cream);
+    font-family: var(--subheading-font);
+    font-size: 1.28em;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.edit-sidebar-btn:hover,
+.edit-sidebar-btn:focus-visible {
+    background: var(--color-oxblood-deep);
+    outline: none;
+}
+
+.edit-sidebar-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.edit-sidebar-btn__icon {
+    width: 0.95em;
+    height: 0.95em;
+    flex-shrink: 0;
+    display: block;
+}
+
+.edit-sidebar-btn__label {
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Room for the fixed Save/Cancel bar while editing (mobile footer) */
 body.edit-mode {
     padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+}
+
+@media screen and (min-width: 900px) {
+    .edit-fab {
+        display: none !important;
+    }
+
+    .edit-footer {
+        display: none !important;
+    }
+
+    .edit-sidebar-btn {
+        display: inline-flex;
+    }
+
+    body.edit-mode {
+        padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+    }
+
+    /* Raise back-to-top above the desktop edit bar while editing */
+    body.edit-mode .back-to-top {
+        bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    }
 }
 
 
@@ -825,6 +957,18 @@ hr,
 .entry-block[contenteditable="true"]:focus {
     outline: none;
     background-color: color-mix(in srgb, var(--color-oxblood) 9%, transparent);
+}
+
+/* Desktop edit mode: caret on your blocks; comment cursor on others */
+@media screen and (min-width: 900px) {
+    body.edit-mode .entry-block[contenteditable="true"] {
+        cursor: text;
+    }
+
+    body.edit-mode .entry-block[contenteditable="false"] {
+        /* Hotspot at the plus center */
+        cursor: url("/images/cursor-comment.svg") 12 12, pointer;
+    }
 }
 
 /* stylized */

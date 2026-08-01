@@ -75,9 +75,19 @@
     text-align: justify;
 }
 
-/* Format controls on detail: centered (shared default already centers) */
-#description-section .format-controls {
+/* Mobile: format controls stay under the heading */
+#description-section .format-controls--inline {
     margin: 10px 0 20px;
+}
+
+/* Desktop sidebar column hidden on mobile */
+.character-format-sidebar,
+.character-notes-spacer {
+    display: none;
+}
+
+.character-notes-layout {
+    display: block;
 }
 
 
@@ -92,5 +102,76 @@
 
     #character-description .entry-blocks {
         font-size: 1.2em;
+    }
+}
+
+/* Match travelogue entry column width (format | main | spacer) */
+@media screen and (min-width: 900px) {
+    #description-section .format-controls--inline {
+        display: none;
+    }
+
+    .character-notes-layout {
+        display: grid;
+        grid-template-columns: minmax(200px, 240px) minmax(0, 1fr) minmax(200px, 240px);
+        grid-template-areas: "format main spacer";
+        gap: 1.5em;
+        align-items: start;
+        margin-top: 10px;
+    }
+
+    .character-format-sidebar {
+        grid-area: format;
+        display: flex;
+        flex-direction: column;
+        position: sticky;
+        top: calc(var(--site-header-height, 3.5rem) + 0.75rem);
+        height: auto;
+        max-height: calc(100vh - var(--site-header-height, 3.5rem) - 1.5rem);
+        overflow-x: hidden;
+        overflow-y: auto;
+        box-sizing: border-box;
+        font-size: 0.8em;
+        padding: 1.35em 12px;
+        margin: 0;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+    }
+
+    .character-notes-main {
+        grid-area: main;
+        min-width: 0;
+    }
+
+    .character-notes-spacer {
+        grid-area: spacer;
+        display: block;
+        min-height: 0;
+    }
+
+    .character-format-sidebar .format-controls,
+    .character-format-sidebar .format-controls__options,
+    .character-format-sidebar .checkbox-div {
+        font-size: inherit;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        width: 100%;
+    }
+
+    .character-format-sidebar label {
+        font-family: var(--subheading-font);
+        font-size: 1.28em;
+        font-weight: 400;
+        letter-spacing: 0.06em;
+        color: var(--color-heading);
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    #character-description {
+        margin-top: 0;
     }
 }

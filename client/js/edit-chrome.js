@@ -1,18 +1,18 @@
 /**
- * Floating Edit FAB + Save/Cancel footer for entry pages (travelogue, character).
+ * Edit chrome for entry pages (travelogue, character).
  *
- * Mental model
- * ------------
+ * Mobile (<900px)
+ * ---------------
  * - Tap FAB → enter edit mode (or open login first).
- * - Long-press FAB (~500ms) → account sheet (log out / change writer). Moving
- *   the pointer cancels the long-press; suppressClick prevents the follow-up tap
- *   from also entering edit mode.
- * - In edit mode: FAB hides, footer shows. Header hide is driven by *typing*
- *   (`beforeinput`/`input`), not mere focus — focus+hide used to race with
- *   insert-at-point and falsely land caret at entry end. Leaving the block /
- *   scrolling / keyboard closing (visualViewport grows) restores the header.
- * - Scroll direction hides/shows the FAB/footer chrome (same pattern as many
- *   mobile apps); near top of page always shows chrome.
+ * - Long-press FAB (~500ms) → account sheet (log out / change writer).
+ * - In edit mode: FAB hides, full-width Save/Cancel footer shows.
+ * - Scroll direction hides/shows FAB/footer; typing reveals footer.
+ *
+ * Desktop (≥900px)
+ * ----------------
+ * - FAB / mobile footer hidden.
+ * - Sidebar `.edit-sidebar-btn`: Edit (pencil) ↔ Save; long-press Edit → account.
+ * - Compact bottom `.edit-desktop-bar` with Save/Cancel — not scroll-hidden.
  */
 
 import {
@@ -34,12 +34,26 @@ import {
 
 const LONG_PRESS_MS = 500;
 const MOVE_CANCEL_PX = 12;
+const DESKTOP_MQ = "(min-width: 900px)";
+
+const EDIT_ICON_SVG = `
+    <svg class="edit-sidebar-btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
+    </svg>
+`;
+
+const SAVE_ICON_SVG = `
+    <svg class="edit-sidebar-btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path fill="currentColor" d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+    </svg>
+`;
 
 let editMode = false;
 const listeners = new Set();
 let chromeRoot = null;
 let fabEl = null;
 let footerEl = null;
+let desktopBarEl = null;
 let lastScrollY = 0;
 let scrollTicking = false;
 let chromeHidden = false;
@@ -51,6 +65,10 @@ let pressStartX = 0;
 let pressStartY = 0;
 /** Set when long-press fires so the subsequent click is ignored. */
 let suppressClick = false;
+/** Element that owns the in-progress long-press (FAB or sidebar btn). */
+let pressTarget = null;
+
+let desktopMq = null;
 
 /* ---------------------------------------------------------- */
 /* -- Edit mode pub/sub                                    -- */
@@ -59,6 +77,11 @@ let suppressClick = false;
 /** @returns {boolean} */
 export function isEditMode() {
     return editMode;
+}
+
+/** @returns {boolean} */
+function isDesktopEditLayout() {
+    return desktopMq?.matches ?? window.matchMedia(DESKTOP_MQ).matches;
 }
 
 /**
@@ -75,6 +98,7 @@ function notifyEditModeChange() {
     document.body.classList.toggle("edit-mode", editMode);
     for (const fn of listeners) fn(editMode);
     syncChromeVisibility();
+    syncSidebarEditButtons();
 }
 
 function enterEditMode() {
@@ -103,20 +127,36 @@ function exitEditMode({ discard = false } = {}) {
 /* -- Chrome / header visibility                           -- */
 /* ---------------------------------------------------------- */
 
-/** FAB vs footer swap when entering/leaving edit mode; reset hide state. */
+/** FAB / footer / desktop bar swap; reset mobile hide state. */
 function syncChromeVisibility() {
-    if (!fabEl || !footerEl) return;
-    fabEl.hidden = editMode;
-    footerEl.hidden = !editMode;
-    fabEl.setAttribute("aria-hidden", editMode ? "true" : "false");
-    footerEl.setAttribute("aria-hidden", editMode ? "false" : "true");
+    if (!fabEl || !footerEl || !desktopBarEl) return;
+
+    const desktop = isDesktopEditLayout();
+
+    fabEl.hidden = editMode || desktop;
+    footerEl.hidden = !editMode || desktop;
+    desktopBarEl.hidden = !editMode || !desktop;
+
+    fabEl.setAttribute("aria-hidden", fabEl.hidden ? "true" : "false");
+    footerEl.setAttribute("aria-hidden", footerEl.hidden ? "true" : "false");
+    desktopBarEl.setAttribute(
+        "aria-hidden",
+        desktopBarEl.hidden ? "true" : "false",
+    );
+
     showHeader();
     chromeHidden = true;
     setChromeHidden(false);
 }
 
-/** Slide FAB/footer off-screen while scrolling down. */
+/** Slide FAB/footer off-screen while scrolling down (mobile only). */
 function setChromeHidden(hidden) {
+    if (isDesktopEditLayout()) {
+        chromeHidden = false;
+        fabEl?.classList.remove("edit-chrome-hidden");
+        footerEl?.classList.remove("edit-chrome-hidden");
+        return;
+    }
     if (chromeHidden === hidden) return;
     chromeHidden = hidden;
     fabEl?.classList.toggle("edit-chrome-hidden", hidden);
@@ -162,7 +202,7 @@ function onEditTyping(e) {
 
 /** Outside edit mode, tapping near entries reveals the FAB if it was scrolled away. */
 function onEntryTap(e) {
-    if (editMode) return;
+    if (editMode || isDesktopEditLayout()) return;
     const t = e.target;
     if (!(t instanceof Element)) return;
     if (!t.closest(".entry-blocks, .game-date-entry, .session-block, #character-description")) {
@@ -173,7 +213,6 @@ function onEntryTap(e) {
 
 function onEditFocusOut() {
     if (!editMode) return;
-    // Let focus settle between blocks / into the footer before restoring
     requestAnimationFrame(() => {
         if (!isEntryEditTarget(document.activeElement)) {
             showHeader();
@@ -184,7 +223,6 @@ function onEditFocusOut() {
 function onViewportResize() {
     const vp = window.visualViewport;
     const height = vp?.height ?? window.innerHeight;
-    // Keyboard closing expands the visual viewport
     if (height > lastViewportHeight + 40) {
         showHeader();
     }
@@ -195,11 +233,16 @@ function onScroll() {
     if (scrollTicking) return;
     scrollTicking = true;
     requestAnimationFrame(() => {
+        showHeader();
+
+        if (isDesktopEditLayout()) {
+            lastScrollY = window.scrollY || document.documentElement.scrollTop;
+            scrollTicking = false;
+            return;
+        }
+
         const y = window.scrollY || document.documentElement.scrollTop;
         const delta = y - lastScrollY;
-
-        // Any scroll dismisses the keyboard context → bring the header back
-        showHeader();
 
         if (y < 24) {
             setChromeHidden(false);
@@ -215,7 +258,7 @@ function onScroll() {
 }
 
 /* ---------------------------------------------------------- */
-/* -- FAB gestures (tap vs long-press)                     -- */
+/* -- FAB / sidebar gestures (tap vs long-press)           -- */
 /* ---------------------------------------------------------- */
 
 function clearPressTimer() {
@@ -223,6 +266,7 @@ function clearPressTimer() {
         clearTimeout(pressTimer);
         pressTimer = null;
     }
+    pressTarget = null;
 }
 
 /** Short tap: enter edit (or login first). Ignored after a long-press. */
@@ -245,11 +289,10 @@ async function handleEditClick(e) {
 }
 
 /**
- * Long-press on FAB → account modal.
+ * Long-press → account modal.
  * Change writer / logout discards any in-progress edit first.
  */
 async function handleAccountLongPress() {
-    // FAB is hidden in edit mode; exit defensively if that ever changes.
     if (editMode) exitEditMode({ discard: true });
 
     const action = await showAccountModal();
@@ -268,22 +311,29 @@ async function handleAccountLongPress() {
     }
 }
 
-function onFabPointerDown(e) {
+function onPressPointerDown(e) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    const target = e.currentTarget;
+    if (!(target instanceof HTMLElement)) return;
+
+    // Sidebar Save mode: no long-press account
+    if (target.classList.contains("edit-sidebar-btn") && editMode) return;
 
     clearPressTimer();
     suppressClick = false;
+    pressTarget = target;
     pressStartX = e.clientX;
     pressStartY = e.clientY;
 
     pressTimer = setTimeout(() => {
         pressTimer = null;
         suppressClick = true;
+        pressTarget = null;
         handleAccountLongPress();
     }, LONG_PRESS_MS);
 }
 
-function onFabPointerMove(e) {
+function onPressPointerMove(e) {
     if (pressTimer == null) return;
     const dx = e.clientX - pressStartX;
     const dy = e.clientY - pressStartY;
@@ -292,8 +342,79 @@ function onFabPointerMove(e) {
     }
 }
 
-function onFabPointerEnd() {
+function onPressPointerEnd() {
     clearPressTimer();
+}
+
+function wirePressGestures(el) {
+    el.addEventListener("pointerdown", onPressPointerDown);
+    el.addEventListener("pointermove", onPressPointerMove);
+    el.addEventListener("pointerup", onPressPointerEnd);
+    el.addEventListener("pointercancel", onPressPointerEnd);
+    el.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+    });
+}
+
+/* ---------------------------------------------------------- */
+/* -- Sidebar Edit / Save buttons                          -- */
+/* ---------------------------------------------------------- */
+
+function syncSidebarEditButtons() {
+    document.querySelectorAll(".edit-sidebar-btn").forEach((btn) => {
+        if (!(btn instanceof HTMLElement)) return;
+        if (editMode) {
+            btn.innerHTML = `${SAVE_ICON_SVG}<span class="edit-sidebar-btn__label">Save</span>`;
+            btn.setAttribute("aria-label", "Save");
+            btn.title = "Save changes";
+            btn.classList.add("is-save");
+        } else {
+            btn.innerHTML = `${EDIT_ICON_SVG}<span class="edit-sidebar-btn__label">Edit</span>`;
+            btn.setAttribute("aria-label", "Edit");
+            btn.title = "Edit · Hold for account";
+            btn.classList.remove("is-save");
+        }
+        btn.disabled = false;
+    });
+}
+
+async function handleSidebarEditClick(e) {
+    const btn = e.target.closest?.(".edit-sidebar-btn");
+    if (!(btn instanceof HTMLElement)) return;
+
+    if (suppressClick) {
+        e.preventDefault();
+        e.stopPropagation();
+        suppressClick = false;
+        return;
+    }
+
+    if (editMode) {
+        btn.disabled = true;
+        try {
+            await handleSave();
+        } finally {
+            syncSidebarEditButtons();
+        }
+        return;
+    }
+
+    await handleEditClick(e);
+}
+
+/**
+ * Ensure sidebar Edit buttons are wired (idempotent). Call after DOM rebuilds
+ * that inject new `.edit-sidebar-btn` nodes (e.g. character re-render).
+ */
+export function refreshSidebarEditButtons() {
+    document.querySelectorAll(".edit-sidebar-btn").forEach((btn) => {
+        if (!(btn instanceof HTMLElement)) return;
+        if (btn.dataset.editWired === "1") return;
+        btn.dataset.editWired = "1";
+        wirePressGestures(btn);
+        btn.addEventListener("click", handleSidebarEditClick);
+    });
+    syncSidebarEditButtons();
 }
 
 /* ---------------------------------------------------------- */
@@ -302,19 +423,24 @@ function onFabPointerEnd() {
 
 async function handleSave() {
     if (!editMode) return;
-    const saveBtn = footerEl?.querySelector(".edit-footer-save");
-    if (saveBtn) saveBtn.disabled = true;
+    const saveBtns = [
+        footerEl?.querySelector(".edit-footer-save"),
+        desktopBarEl?.querySelector(".edit-desktop-bar-save"),
+        ...document.querySelectorAll(".edit-sidebar-btn.is-save"),
+    ].filter(Boolean);
+
+    for (const b of saveBtns) b.disabled = true;
     try {
         const ok = await saveAllEntryBlocks(document);
         if (ok) exitEditMode({ discard: false });
     } finally {
-        if (saveBtn) saveBtn.disabled = false;
+        for (const b of saveBtns) b.disabled = false;
+        syncSidebarEditButtons();
     }
 }
 
 async function handleCancel() {
     if (!editMode) return;
-    // Confirm modal: filled "Cancel" = discard; "Keep Editing" = stay
     const discard = await showDiscardConfirmModal();
     if (discard) exitEditMode({ discard: true });
 }
@@ -322,18 +448,6 @@ async function handleCancel() {
 /* ---------------------------------------------------------- */
 /* -- Build & init                                         -- */
 /* ---------------------------------------------------------- */
-
-function wireFabGestures() {
-    fabEl.addEventListener("pointerdown", onFabPointerDown);
-    fabEl.addEventListener("pointermove", onFabPointerMove);
-    fabEl.addEventListener("pointerup", onFabPointerEnd);
-    fabEl.addEventListener("pointercancel", onFabPointerEnd);
-    fabEl.addEventListener("click", handleEditClick);
-    // Prevent OS context menu from stealing the long-press path on mobile
-    fabEl.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-    });
-}
 
 function buildChrome() {
     chromeRoot = document.createElement("div");
@@ -350,7 +464,8 @@ function buildChrome() {
             <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
         </svg>
     `;
-    wireFabGestures();
+    wirePressGestures(fabEl);
+    fabEl.addEventListener("click", handleEditClick);
 
     footerEl = document.createElement("div");
     footerEl.className = "edit-footer";
@@ -362,19 +477,45 @@ function buildChrome() {
     footerEl.querySelector(".edit-footer-save").addEventListener("click", handleSave);
     footerEl.querySelector(".edit-footer-cancel").addEventListener("click", handleCancel);
 
-    chromeRoot.append(fabEl, footerEl);
+    desktopBarEl = document.createElement("div");
+    desktopBarEl.className = "edit-desktop-bar";
+    desktopBarEl.hidden = true;
+    desktopBarEl.setAttribute("role", "toolbar");
+    desktopBarEl.setAttribute("aria-label", "Edit actions");
+    desktopBarEl.innerHTML = `
+        <button type="button" class="edit-desktop-bar-btn edit-desktop-bar-save">Save</button>
+        <button type="button" class="edit-desktop-bar-btn edit-desktop-bar-cancel">Cancel</button>
+    `;
+    desktopBarEl
+        .querySelector(".edit-desktop-bar-save")
+        .addEventListener("click", handleSave);
+    desktopBarEl
+        .querySelector(".edit-desktop-bar-cancel")
+        .addEventListener("click", handleCancel);
+
+    chromeRoot.append(fabEl, footerEl, desktopBarEl);
     document.body.appendChild(chromeRoot);
     syncChromeVisibility();
 }
 
 /**
- * Mount floating Edit FAB / Save-Cancel footer on entry pages.
+ * Mount floating Edit FAB / Save-Cancel footer / desktop bar on entry pages.
  * Idempotent if `#edit-chrome` already exists.
  */
 export function initEditChrome() {
-    if (document.getElementById("edit-chrome")) return;
+    if (document.getElementById("edit-chrome")) {
+        refreshSidebarEditButtons();
+        return;
+    }
+
+    desktopMq = window.matchMedia(DESKTOP_MQ);
+    desktopMq.addEventListener("change", () => {
+        syncChromeVisibility();
+    });
 
     buildChrome();
+    refreshSidebarEditButtons();
+
     lastScrollY = window.scrollY || document.documentElement.scrollTop;
     lastViewportHeight = window.visualViewport?.height ?? window.innerHeight;
 

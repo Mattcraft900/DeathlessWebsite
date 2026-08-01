@@ -36,7 +36,9 @@ import { getCurrentWriter } from "./auth-ui.js";
 
 /** @returns {"simple"|"stylized"} current formatting dropdown value (default stylized) */
 function getFormatMode() {
-    const dropdown = document.getElementById("format-dropdown");
+    const dropdown =
+        document.getElementById("format-dropdown") ||
+        document.getElementById("format-dropdown-inline");
     return dropdown?.value === "simple" ? "simple" : "stylized";
 }
 

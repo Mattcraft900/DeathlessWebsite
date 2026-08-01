@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- Simple plus: white fill, thin black outline. Hotspot at center (12, 12). -->
+  <path
+    fill="#ffffff"
+    stroke="#000000"
+    stroke-width="1.25"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    d="M10 3.5h4v6.5H20.5v4H14V20.5h-4V14H3.5v-4H10V3.5z"
+  />
+</svg>

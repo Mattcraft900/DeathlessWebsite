@@ -26,6 +26,11 @@
     scroll-margin-top: 5.5rem;
 }
 
+/* Edit button is desktop-only (shared.css); keep spacing when visible */
+#format-sidebar .edit-sidebar-btn {
+    margin-bottom: 1em;
+}
+
 #format-sidebar .format-controls {
     justify-content: center;
     margin: 0;
@@ -241,7 +246,35 @@
 
 
 /* ---------------------------------------------------------- */
-/* -- Back to top                                          -- */
+/* -- End-of-page back to top (static)                     -- */
+/* ---------------------------------------------------------- */
+.travelogue-end-nav {
+    text-align: center;
+    margin: 2.75em 0 0.5em;
+}
+
+.travelogue-end-top {
+    background: transparent;
+    color: var(--color-ink);
+    border: none;
+    border-radius: 0;
+    padding: 0.15em 0.2em;
+    font-family: var(--paragraph-font);
+    font-size: 0.9em;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+.travelogue-end-top:hover,
+.travelogue-end-top:focus-visible {
+    background: transparent;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+
+/* ---------------------------------------------------------- */
+/* -- Back to top (floating)                               -- */
 /* ---------------------------------------------------------- */
 .back-to-top {
     position: fixed;
@@ -294,36 +327,48 @@
         grid-template-columns: minmax(200px, 240px) minmax(0, 1fr) minmax(200px, 240px);
         grid-template-areas: "format main jump";
         gap: 1.5em;
-        align-items: start;
+        /* Stretch columns to main height so sticky sidebars don't unpin early */
+        align-items: stretch;
         margin-top: 30px;
     }
 
+    .travelogue-sidebar-col--format {
+        grid-area: format;
+        min-width: 0;
+    }
+
+    .travelogue-sidebar-col--jump {
+        grid-area: jump;
+        min-width: 0;
+    }
+
+    /*
+     * Viewport-tall bordered shells stick inside tall column wrappers.
+     * Height fills the screen (borders reach the bottom) while the tall
+     * parent keeps sticky working until near the true page end.
+     */
     #format-sidebar,
     #jump-sidebar {
         position: sticky;
         top: calc(var(--site-header-height, 3.5rem) + 0.75rem);
         height: calc(100vh - var(--site-header-height, 3.5rem) - 1.5rem);
-        max-height: none;
+        max-height: calc(100vh - var(--site-header-height, 3.5rem) - 1.5rem);
         overflow-x: hidden;
         box-sizing: border-box;
+        margin: 0;
     }
 
     #format-sidebar {
-        grid-area: format;
-        margin-top: 0;
         display: flex;
         flex-direction: column;
         font-size: 0.8em;
         padding: 1.35em 12px;
         overflow-y: auto;
-        /* Let the page parchment show through (panel cream looked lighter) */
         background: transparent;
         box-shadow: none;
     }
 
     #jump-sidebar {
-        grid-area: jump;
-        margin: 0;
         display: flex;
         flex-direction: column;
         font-size: 0.8em;

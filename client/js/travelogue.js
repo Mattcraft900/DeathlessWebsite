@@ -468,6 +468,19 @@ function setupJumpScrollSpy() {
 
 function setupBackToTop() {
     const btn = document.getElementById("back-to-top");
+    const endBtn = document.getElementById("travelogue-end-top");
+
+    const scrollToTop = () => {
+        const intro = document.getElementById("travelogue-intro");
+        if (intro) {
+            intro.scrollIntoView({ behavior: "instant", block: "start" });
+        } else {
+            window.scrollTo({ top: 0, behavior: "instant" });
+        }
+    };
+
+    endBtn?.addEventListener("click", scrollToTop);
+
     if (!btn) return;
 
     let lastY = window.scrollY;
@@ -491,14 +504,7 @@ function setupBackToTop() {
     window.addEventListener("scroll", onScroll, { passive: true });
 
     btn.addEventListener("click", () => {
-        // Sticky sidebars make scrollIntoView(format) land in the wrong place —
-        // go to the real page top (intro / brand content above the grid).
-        const intro = document.getElementById("travelogue-intro");
-        if (intro) {
-            intro.scrollIntoView({ behavior: "instant", block: "start" });
-        } else {
-            window.scrollTo({ top: 0, behavior: "instant" });
-        }
+        scrollToTop();
         setVisible(false);
     });
 }

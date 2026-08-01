@@ -7,7 +7,7 @@ import { apiGet } from "./api.js";
 import { initAuth, onAuthChange } from "./auth-ui.js";
 import { applyFormatToBlocks, renderEntryBlocks } from "./blocks.js";
 import { attachDetailPortrait } from "./character-images.js";
-import { initEditChrome, isEditMode } from "./edit-chrome.js";
+import { initEditChrome, isEditMode, refreshSidebarEditButtons } from "./edit-chrome.js";
 
 /** Format class/level rows for display (e.g. "Wizard 5 / Rogue 2"). */
 function classesToString(classes) {
@@ -56,14 +56,34 @@ function renderCharacter(main, data) {
         <hr class="section-rule" aria-hidden="true">
         <section class="content-section" id="description-section" aria-labelledby="description-heading">
             <h2 id="description-heading" class="section-heading">Lucy's Notes:</h2>
-            <div class="format-controls" id="format-controls">
-                <label for="format-dropdown">Formatting:</label>
-                <select id="format-dropdown">
+            <div class="format-controls format-controls--inline" id="format-controls-inline">
+                <label for="format-dropdown-inline">Formatting:</label>
+                <select id="format-dropdown-inline">
                     <option value="simple">Simple</option>
                     <option value="stylized" selected>Stylized</option>
                 </select>
             </div>
-            <div id="character-description"></div>
+            <div class="character-notes-layout">
+                <aside class="character-format-sidebar" id="character-format-sidebar">
+                    <button type="button" class="edit-sidebar-btn" aria-label="Edit" title="Edit · Hold for account">
+                        <svg class="edit-sidebar-btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
+                        </svg>
+                        <span class="edit-sidebar-btn__label">Edit</span>
+                    </button>
+                    <div class="format-controls" id="format-controls">
+                        <label for="format-dropdown">Formatting:</label>
+                        <select id="format-dropdown">
+                            <option value="simple">Simple</option>
+                            <option value="stylized" selected>Stylized</option>
+                        </select>
+                    </div>
+                </aside>
+                <div class="character-notes-main">
+                    <div id="character-description"></div>
+                </div>
+                <div class="character-notes-spacer" aria-hidden="true"></div>
+            </div>
         </section>
         <hr class="section-rule" aria-hidden="true">
     `;
@@ -113,9 +133,22 @@ function renderCharacter(main, data) {
         desc.innerHTML = `<p><em>No biography yet.</em></p>`;
     }
 
-    document.getElementById("format-dropdown")?.addEventListener("change", () => {
+    const syncFormatDropdowns = (source) => {
+        const value = source.value;
+        document.querySelectorAll("#format-dropdown, #format-dropdown-inline").forEach((el) => {
+            if (el !== source) el.value = value;
+        });
         applyFormatToBlocks(main);
+    };
+
+    document.getElementById("format-dropdown")?.addEventListener("change", (e) => {
+        syncFormatDropdowns(e.target);
     });
+    document.getElementById("format-dropdown-inline")?.addEventListener("change", (e) => {
+        syncFormatDropdowns(e.target);
+    });
+
+    refreshSidebarEditButtons();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
