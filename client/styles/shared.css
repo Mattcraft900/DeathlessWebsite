@@ -453,22 +453,26 @@ nav a {
 }
 
 .auth-confirm-actions {
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    justify-content: stretch;
+    align-items: stretch;
     gap: 0.75em;
 }
 
 .auth-confirm-actions .auth-btn {
-    flex: 1 1 auto;
+    flex: none;
+    width: 100%;
     margin: 0;
     padding: 0.75em 0.5em;
+    font-family: var(--subheading-font);
     font-size: 1em;
     text-align: center;
     white-space: nowrap;
 }
 
 .auth-confirm-actions .auth-btn-ghost {
-    flex: 0 0 auto;
+    width: auto;
+    align-self: center;
     padding: 0.15em 0.2em;
     font-size: 0.9em;
 }
@@ -566,7 +570,7 @@ nav a {
     margin: 0.25rem;
     border: none;
     border-radius: 8px;
-    font-family: var(--heading-font);
+    font-family: var(--subheading-font);
     font-size: 1.05em;
     font-weight: bold;
     cursor: pointer;
@@ -622,7 +626,7 @@ nav a {
     padding: 0.35em 0.9em;
     border: none;
     border-radius: 6px;
-    font-family: var(--heading-font);
+    font-family: var(--subheading-font);
     font-size: 0.95em;
     font-weight: bold;
     cursor: pointer;
@@ -870,6 +874,7 @@ hr,
 .character-gallery > a {
     display: block;
     height: 100%;
+    min-width: 0; /* let grid columns shrink below intrinsic image width */
     border-radius: 12px;
 }
 
@@ -879,6 +884,7 @@ hr,
     border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
     padding: 15px;
     height: 100%;
+    min-width: 0;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.12s ease;
 }
 
@@ -887,19 +893,22 @@ hr,
 }
 
 .character-card .character-img-frame {
-    width: 240px;
-    max-width: 100%;
+    /* Fluid cap: fills the card up to 240px so 5-up grids never overflow */
+    width: min(240px, 100%);
+    aspect-ratio: 1;
     margin: 0 auto;
     border-radius: 50%;
     padding: 2px;
     background-color: color-mix(in srgb, var(--color-border) 55%, transparent);
     overflow: hidden;
+    box-sizing: border-box;
     transition: padding 0.2s ease, background-color 0.2s ease;
 }
 
 .character-card .character-img {
     display: block;
     width: 100%;
+    height: 100%;
     aspect-ratio: 1;
     object-fit: cover;
     border-radius: 50%;
@@ -941,22 +950,27 @@ hr,
 }
 
 /*
- * Editable affordance: avoid `outline` on these inline spans.
- * Outlines (and fragmenting shadows) paint per line-box, so wrapped blocks
- * show thin gaps between lines — especially with outline-offset on desktop.
- * A sliced background wash stays continuous across wraps.
+ * Editable affordance: dashed outline so empty inserts stay visible.
+ * Outline paints per line-box on wrapped spans (thin gaps between lines) —
+ * accepted tradeoff vs a wash that hid blank inserts.
  */
-.entry-block[contenteditable="true"]:not([data-empty="true"]) {
-    outline: none;
+.entry-block[contenteditable="true"] {
+    outline: 1px dashed var(--color-muted);
+    outline-offset: 2px;
     border-radius: 2px;
-    padding: 0 0.12em;
-    margin: 0 -0.12em;
-    background-color: color-mix(in srgb, var(--color-muted) 16%, transparent);
+}
+
+.entry-block[contenteditable="true"][data-empty="true"] {
+    /* Keep a tiny footprint so the outline isn't zero-width */
+    padding: 0;
+    min-width: 3px;
+    display: inline-block;
+    vertical-align: baseline;
 }
 
 .entry-block[contenteditable="true"]:focus {
-    outline: none;
-    background-color: color-mix(in srgb, var(--color-oxblood) 9%, transparent);
+    outline: 1px dashed var(--color-oxblood);
+    outline-offset: 2px;
 }
 
 /* Desktop edit mode: caret on your blocks; comment cursor on others */
@@ -1042,10 +1056,12 @@ footer {
     text-align: center;
     font-size: 0.8em;
     color: var(--ink-soft);
-    padding: 1em 0 1.5em;
+    padding: 0.75em 0 0.4em;
 }
 
 .attribution a {
+    /* `*` sets a fixed font-size on every node; inherit so links match the caption */
+    font-size: inherit;
     color: var(--color-link);
     text-decoration: underline;
 }

@@ -293,11 +293,10 @@ export function showAccountModal() {
 }
 
 /**
- * Confirm dialog with equal-width actions.
- * Destructive action is the filled "Cancel" (discard); "Keep Editing" is backgroundless.
- * Wording matches the footer Cancel button so writers aren't surprised.
+ * Confirm dialog with stacked actions.
+ * Destructive action is the filled "Discard"; "Keep Editing" is backgroundless.
  *
- * @returns {Promise<boolean>} true if user chose to discard (Cancel), false to keep editing
+ * @returns {Promise<boolean>} true if user chose to discard, false to keep editing
  */
 export function showDiscardConfirmModal() {
     return new Promise((resolve) => {
@@ -311,7 +310,7 @@ export function showDiscardConfirmModal() {
                     All unsaved changes will be lost.
                 </p>
                 <div class="auth-modal-actions auth-confirm-actions">
-                    <button type="button" class="auth-btn auth-btn-confirm-discard">Cancel</button>
+                    <button type="button" class="auth-btn auth-btn-confirm-discard">Discard</button>
                     <button type="button" class="auth-btn auth-btn-ghost">Keep Editing</button>
                 </div>
             </div>

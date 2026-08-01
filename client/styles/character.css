@@ -34,11 +34,13 @@
 /* ---------------------------------------------------------- */
 #character-img {
     border-radius: 20px;
+    border: 2px solid color-mix(in srgb, var(--color-border) 70%, transparent);
     height: 600px;
     max-height: 60vh;
     display: block;
     margin: 0 auto;
     object-fit: cover;
+    box-sizing: border-box;
 }
 
 
@@ -96,6 +98,10 @@
 /* ############++++++++++--------------++++++++++############ */
 
 @media screen and (min-width: 600px) {
+    #character-img {
+        border-width: 3px;
+    }
+
     #character-description {
         margin-bottom: 60px;
     }

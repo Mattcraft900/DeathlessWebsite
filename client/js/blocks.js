@@ -175,6 +175,9 @@ function createParaBreak() {
  * before each block after the first. Call this after any insert/remove/split
  * that changes block order or startsParagraph flags.
  *
+ * Spaces next to brand-new unsaved editable blocks (no `data-block-id` yet) are
+ * omitted so inserting commentary doesn't shift neighbors until Save.
+ *
  * @param {HTMLElement|null|undefined} container
  */
 function refreshBlockSeparators(container) {
@@ -185,12 +188,20 @@ function refreshBlockSeparators(container) {
         if (i > 0) {
             if (readStartsParagraph(blocks[i])) {
                 container.appendChild(createParaBreak());
-            } else {
+            } else if (
+                !isUnsavedEditableBlock(blocks[i]) &&
+                !isUnsavedEditableBlock(blocks[i - 1])
+            ) {
                 container.appendChild(document.createTextNode(" "));
             }
         }
         container.appendChild(blocks[i]);
     }
+}
+
+/** Editable block created this session — not yet persisted (no server id). */
+function isUnsavedEditableBlock(el) {
+    return isEntryBlock(el) && el.isContentEditable && !el.dataset.blockId;
 }
 
 /**

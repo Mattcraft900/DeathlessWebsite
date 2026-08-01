@@ -129,7 +129,14 @@ async function loadSessions(append = false) {
         return;
     }
     loading = true;
-    if (loadMoreBtn) loadMoreBtn.disabled = true;
+    if (loadMoreBtn) {
+        loadMoreBtn.disabled = true;
+        if (append) {
+            loadMoreBtn.classList.remove("hidden");
+            loadMoreBtn.classList.add("is-loading");
+            loadMoreBtn.textContent = "(Loading more content)";
+        }
+    }
 
     loadPromise = (async () => {
         try {
@@ -147,6 +154,8 @@ async function loadSessions(append = false) {
 
             nextCursor = data.nextCursor;
             if (loadMoreBtn) {
+                loadMoreBtn.classList.remove("is-loading");
+                loadMoreBtn.textContent = "Load more sessions";
                 loadMoreBtn.classList.toggle("hidden", !nextCursor);
                 loadMoreBtn.disabled = false;
             }
@@ -155,6 +164,11 @@ async function loadSessions(append = false) {
             console.error(err);
             if (!append) {
                 sessionsContainer.innerHTML = `<p>Could not load travelogue.</p>`;
+            }
+            if (loadMoreBtn) {
+                loadMoreBtn.classList.remove("is-loading");
+                loadMoreBtn.textContent = "Load more sessions";
+                loadMoreBtn.disabled = false;
             }
         } finally {
             loading = false;
@@ -225,12 +239,15 @@ async function jumpToDomId(domId) {
 function renderJumpToList() {
     if (!tocData || !jumpToList) return;
 
+    const showSessions = document.getElementById("session-check")?.checked !== false;
     const items = [];
     for (const session of tocData.sessions || []) {
-        const sessionLabel = displaySessionTitle(session.title || "Session");
-        items.push(
-            `<li class="jump-session"><a href="#entry-${session.id}">${escapeHtml(sessionLabel)}</a></li>`,
-        );
+        if (showSessions) {
+            const sessionLabel = displaySessionTitle(session.title || "Session");
+            items.push(
+                `<li class="jump-session"><a href="#entry-${session.id}">${escapeHtml(sessionLabel)}</a></li>`,
+            );
+        }
         for (const d of session.dates || []) {
             // Prologue is a session heading only in the Jump-to UX (skip duplicate date row)
             if (d.dateKey === "prologue") continue;
@@ -535,6 +552,7 @@ function setupFormatControls() {
         document.querySelectorAll(".session-title").forEach((el) => {
             el.classList.toggle("hidden", !sessionCheck.checked);
         });
+        renderJumpToList();
     });
 
     formatDropdown?.addEventListener("change", () => {

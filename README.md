@@ -109,7 +109,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 - [x] Move the "Writing as" dropdown.
 - [ ] Implement a route for players to change their PIN
 - [x] Restore old site layouts
-- [ ] Test infinite scrolling/jump-to functions on the travelogue.
+- [x] Test infinite scrolling/jump-to functions on the travelogue.
     - [x] Implement jump-to menu(s) for mobile
     - Will need to first generate tons of placeholder entries for the travelogue
 - [x] Refactor the logo as SVG + get favicon files
@@ -133,16 +133,16 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 
 #### Style
 
-- [ ] Color palette overhaul
+- [x] Color palette overhaul
 - [x] Find a good subheading font
 - [x] Persistent header(s)
     - [ ] Sticky headings for travelogue session entries & character list categories
-- [ ] Box shadow around Deathless title
-- [ ] Travelogue sidebars:
-    - [ ] remove/change coloring on format options section
-    - [ ] Center checkbox vertically for hiding session names
-    - [ ] Shrink/clamp text on right sidebar to remove the horizontal scroll
-    - [ ] Add top margin for both so they don't look so high compared to the travelogue content
+- [x] Box shadow around Deathless title
+- [x] Travelogue sidebars:
+    - remove/change coloring on format options section
+    - Center checkbox vertically for hiding session names
+    - Shrink/clamp text on right sidebar to remove the horizontal scroll
+    - Add top margin for both so they don't look so high compared to the travelogue content
 - [ ] Dark Mode
 
 - [ ] Code practices standardizations:

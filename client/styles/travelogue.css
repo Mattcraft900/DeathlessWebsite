@@ -244,6 +244,22 @@
     cursor: not-allowed;
 }
 
+/* Quiet status while the next page is fetching (infinite scroll) */
+#load-more-btn.is-loading,
+#load-more-btn.is-loading:disabled {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0.15em 0.2em;
+    color: var(--ink-soft);
+    font-family: var(--paragraph-font);
+    font-size: 0.9em;
+    font-weight: normal;
+    opacity: 1;
+    cursor: default;
+}
+
 
 /* ---------------------------------------------------------- */
 /* -- End-of-page back to top (static)                     -- */
