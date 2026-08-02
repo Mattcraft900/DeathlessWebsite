@@ -72,6 +72,7 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
         span.dataset.writerId = block.writerId;
         span.dataset.sortRank = block.sortRank;
         setStartsParagraph(span, Boolean(block.startsParagraph));
+        setVoiceName(span, block.writerDisplayName);
         span.textContent = block.body;
         applyHandwritingStyle(
             span,
@@ -112,6 +113,7 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
                 startsParagraph: Boolean(b.startsParagraph),
                 sortRank: b.sortRank,
                 writerCssClass: b.writerCssClass,
+                writerDisplayName: b.writerDisplayName,
             })),
         };
 
@@ -165,12 +167,44 @@ function setStartsParagraph(el, value) {
     else delete el.dataset.startsParagraph;
 }
 
+/**
+ * Stamp uppercase Simple-mode label name on a block (`data-voice-name`).
+ * Used by CSS ::before; not part of textContent / saves.
+ * @param {HTMLElement} span
+ * @param {string|null|undefined} displayName
+ */
+function setVoiceName(span, displayName) {
+    const name = (displayName ?? "").trim();
+    if (name) span.dataset.voiceName = name.toUpperCase();
+    else delete span.dataset.voiceName;
+}
+
 /** @returns {HTMLSpanElement} zero-height break between paragraphs */
 function createParaBreak() {
     const el = document.createElement("span");
     el.className = "entry-para-break";
     el.setAttribute("aria-hidden", "true");
     return el;
+}
+
+/**
+ * Mark open/close of contiguous non-Lucy voice runs for Simple-mode brackets.
+ * @param {HTMLElement[]} blocks
+ */
+function refreshSimpleVoiceLabels(blocks) {
+    for (let i = 0; i < blocks.length; i++) {
+        const block = blocks[i];
+        block.classList.remove("simple-voice-open", "simple-voice-close");
+        if (block.classList.contains("voice-lucy")) continue;
+        const prev = blocks[i - 1];
+        const next = blocks[i + 1];
+        if (!prev || prev.dataset.writerId !== block.dataset.writerId) {
+            block.classList.add("simple-voice-open");
+        }
+        if (!next || next.dataset.writerId !== block.dataset.writerId) {
+            block.classList.add("simple-voice-close");
+        }
+    }
 }
 
 /**
@@ -203,6 +237,7 @@ function refreshBlockSeparators(container) {
         }
         container.appendChild(blocks[i]);
     }
+    refreshSimpleVoiceLabels(blocks);
 }
 
 /** Editable block created this session — not yet persisted (no server id). */
@@ -413,6 +448,7 @@ function handleEnterInOwnBlock(span, writer, e) {
         );
         empty.contentEditable = "true";
         empty.textContent = "";
+        setVoiceName(empty, writer.displayName);
         applyHandwritingStyle(empty, writer.handwritingColor, writer.handwritingFont);
         setStartsParagraph(empty, readStartsParagraph(span));
         setStartsParagraph(span, true);
@@ -442,6 +478,7 @@ function handleEnterInOwnBlock(span, writer, e) {
     );
     neu.contentEditable = "true";
     neu.textContent = after;
+    setVoiceName(neu, span.dataset.voiceName || writer.displayName);
     neu.style.setProperty("--writer-color", span.style.getPropertyValue("--writer-color"));
     neu.style.setProperty("--writer-font", span.style.getPropertyValue("--writer-font"));
     if (!neu.style.getPropertyValue("--writer-color")) neu.style.removeProperty("--writer-color");
@@ -630,6 +667,7 @@ function insertOwnBlockAfter(afterSpan, writer) {
     );
     span.contentEditable = "true";
     span.textContent = "";
+    setVoiceName(span, writer.displayName);
     applyHandwritingStyle(span, writer.handwritingColor, writer.handwritingFont);
     setStartsParagraph(span, false);
     wireOwnEditable(span);
@@ -660,6 +698,7 @@ function insertOwnBlockBefore(beforeSpan, writer) {
     );
     span.contentEditable = "true";
     span.textContent = "";
+    setVoiceName(span, writer.displayName);
     applyHandwritingStyle(span, writer.handwritingColor, writer.handwritingFont);
     setStartsParagraph(span, false);
     wireOwnEditable(span);
@@ -731,6 +770,7 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
     own.dataset.sortRank = midRank;
     own.contentEditable = "true";
     own.textContent = "";
+    setVoiceName(own, writer.displayName);
     applyHandwritingStyle(own, writer.handwritingColor, writer.handwritingFont);
     setStartsParagraph(own, false);
     wireOwnEditable(own);
@@ -742,6 +782,7 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
     continuation.dataset.splitContinuation = "1";
     continuation.contentEditable = "false";
     continuation.textContent = after;
+    setVoiceName(continuation, foreignSpan.dataset.voiceName);
     continuation.style.setProperty(
         "--writer-color",
         foreignSpan.style.getPropertyValue("--writer-color"),
@@ -982,6 +1023,7 @@ function insertOwnBlockAtEnd(container, writer) {
     span.dataset.sortRank = generateKeyBetween(last?.dataset.sortRank ?? null, null);
     span.contentEditable = "true";
     span.textContent = "";
+    setVoiceName(span, writer.displayName);
     applyHandwritingStyle(span, writer.handwritingColor, writer.handwritingFont);
     setStartsParagraph(span, blocks.length > 0);
     wireOwnEditable(span);
@@ -1339,6 +1381,7 @@ function snapshotBlocksFromDom(container) {
             startsParagraph: readStartsParagraph(node),
             sortRank: node.dataset.sortRank,
             writerCssClass: voiceClassFromEl(node),
+            writerDisplayName: node.dataset.voiceName || undefined,
         });
     }
     return blocks;

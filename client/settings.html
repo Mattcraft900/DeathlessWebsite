@@ -52,13 +52,15 @@
                 <p class="settings-preview-label">Preview</p>
                 <div id="handwriting-preview" class="settings-preview entry-blocks" aria-live="polite"></div>
 
-                <label for="handwriting-color">Color</label>
+                <label for="handwriting-hex">Color</label>
                 <div class="settings-color-row">
-                    <input id="handwriting-color" name="color" type="color" value="#6a2218" aria-label="Color picker">
-                    <div class="settings-color-fields">
-                        <p class="settings-color-hint" id="handwriting-hex-hint">Tap the square or enter a hex code</p>
-                        <input id="handwriting-hex" name="hex" type="text" inputmode="text" spellcheck="false" maxlength="7" placeholder="#6a2218" aria-label="Hex color" aria-describedby="handwriting-hex-hint">
+                    <div class="settings-color-swatch">
+                        <input id="handwriting-color" name="color" type="color" value="#6a2218" aria-label="Color picker">
+                        <svg class="settings-color-edit-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.41l-2.34-2.34a1.003 1.003 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
                     </div>
+                    <input id="handwriting-hex" name="hex" type="text" inputmode="text" spellcheck="false" maxlength="7" placeholder="#6a2218" aria-label="Hex color">
                 </div>
 
                 <div class="settings-font-label-row">

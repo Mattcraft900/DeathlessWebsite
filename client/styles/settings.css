@@ -111,46 +111,54 @@
     gap: 0.65em;
 }
 
-.settings-color-row input[type="color"] {
-    width: 3.25em;
-    height: 3.25em;
-    padding: 0.2em;
+.settings-color-swatch {
+    position: relative;
+    flex-shrink: 0;
+    width: 2.75em;
+    align-self: stretch;
+    overflow: hidden;
+    border-radius: 6px;
+}
+
+.settings-color-swatch input[type="color"] {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0.15em;
     border: 2px solid var(--color-border);
     border-radius: 6px;
     background: var(--color-bg-elevated);
     box-shadow: inset 0 1px 2px var(--color-shadow);
     cursor: pointer;
-    flex-shrink: 0;
-    align-self: flex-end;
 }
 
-.settings-color-row input[type="color"]::-webkit-color-swatch-wrapper {
+.settings-color-swatch input[type="color"]::-webkit-color-swatch-wrapper {
     padding: 0;
 }
 
-.settings-color-row input[type="color"]::-webkit-color-swatch {
+.settings-color-swatch input[type="color"]::-webkit-color-swatch {
     border: 1px solid color-mix(in srgb, var(--color-ink) 20%, transparent);
     border-radius: 3px;
 }
 
-.settings-color-fields {
+.settings-color-edit-icon {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 1.05em;
+    height: 1.05em;
+    pointer-events: none;
+    color: var(--color-cream);
+    filter: drop-shadow(0 0 1px color-mix(in srgb, var(--ink) 35%, transparent));
+}
+
+.settings-color-row > input[type="text"] {
+    position: relative;
+    z-index: 1;
     flex: 1;
     min-width: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 3.25em;
-}
-
-.settings-color-hint {
-    margin: 0;
-    font-size: 0.65em;
-    line-height: 1.25;
-    color: var(--ink-soft);
-}
-
-.settings-color-fields input[type="text"] {
-    width: 100%;
     margin: 0;
 }
 

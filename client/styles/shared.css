@@ -1062,6 +1062,20 @@ hr,
     font-style: italic;
 }
 
+/* Simple-mode speaker brackets — CSS only; not in textContent / saves */
+.entry-block.simple:not(.voice-lucy).simple-voice-open::before {
+    content: "<" attr(data-voice-name) ": ";
+}
+
+.entry-block.simple:not(.voice-lucy).simple-voice-close::after {
+    content: ">";
+}
+
+.entry-block.simple[data-empty="true"].simple-voice-open::before,
+.entry-block.simple[data-empty="true"].simple-voice-close::after {
+    content: none;
+}
+
 
 /* ---------------------------------------------------------- */
 /* -- Footer / Misc.                                       -- */
