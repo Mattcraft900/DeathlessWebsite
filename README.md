@@ -107,13 +107,13 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
 ### Wanted for MVP
 
 - [x] Move the "Writing as" dropdown.
-- [ ] Implement a route for players to change their PIN
+- [x] Implement a route for players to change their PIN
 - [x] Restore old site layouts
 - [x] Test infinite scrolling/jump-to functions on the travelogue.
     - [x] Implement jump-to menu(s) for mobile
     - Will need to first generate tons of placeholder entries for the travelogue
 - [x] Refactor the logo as SVG + get favicon files
-- [ ] Figure out a better method of "simplified" styles for six different voices. 
+- [x] Figure out a better method of "simplified" styles for six different voices. 
     - Curently they're all just italicized except Lucy.
     - Possibly use some kind of brackets with character name in caps &lt;LUARK: like this, for example&gt;.
 
@@ -152,7 +152,3 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
     - [x] reorganize/standardize class selectors, et. al. to provide for more consistent formatting across the whole site
     - [ ] Get rid of dead code, streamline repetitive code
     
-
-### Current task: 
-
-#### List items:

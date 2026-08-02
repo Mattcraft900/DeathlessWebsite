@@ -40,11 +40,45 @@
     justify-content: center;
 }
 
+/*
+ * Mobile: keep label + checkbox in one centered inline run so a wrapping
+ * label doesn't stretch full-width and park the box on the far right.
+ * Desktop (900px+) switches back to a stacked flex column.
+ */
 .checkbox-div {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4em;
+    text-align: center;
+}
+
+/* Custom checkbox — mobile base; desktop upsizes slightly in the 900px query */
+#format-sidebar #session-check {
+    width: 0.7em;
+    height: 0.7em;
+    margin: 0 0 0 0.2em;
+    vertical-align: middle;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: var(--color-oxblood);
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1.5px solid var(--color-bronze);
+    border-radius: 0.28em;
+    background: var(--color-cream);
+    display: inline-grid;
+    place-content: center;
+}
+
+#format-sidebar #session-check:checked {
+    background: var(--color-oxblood);
+    border-color: var(--color-oxblood-deep);
+}
+
+#format-sidebar #session-check:checked::before {
+    content: "";
+    width: 0.22em;
+    height: 0.4em;
+    border: solid var(--color-cream);
+    border-width: 0 0.1em 0.1em 0;
+    transform: rotate(45deg) translate(-0.04em, -0.02em);
 }
 
 
@@ -490,6 +524,9 @@
     }
 
     #format-sidebar .checkbox-div {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         gap: 0.55em;
     }
 
@@ -507,27 +544,13 @@
         width: 0.9em;
         height: 0.9em;
         margin: 0;
-        cursor: pointer;
-        accent-color: var(--color-oxblood);
-        appearance: none;
-        -webkit-appearance: none;
-        border: 1.5px solid var(--color-bronze);
-        border-radius: 0.28em;
-        background: var(--color-cream);
+        vertical-align: unset;
         display: grid;
-        place-content: center;
-    }
-
-    #format-sidebar #session-check:checked {
-        background: var(--color-oxblood);
-        border-color: var(--color-oxblood-deep);
     }
 
     #format-sidebar #session-check:checked::before {
-        content: "";
         width: 0.28em;
         height: 0.5em;
-        border: solid var(--color-cream);
         border-width: 0 0.12em 0.12em 0;
         transform: rotate(45deg) translate(-0.05em, -0.02em);
     }
