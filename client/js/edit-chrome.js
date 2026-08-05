@@ -24,6 +24,7 @@ import {
 } from "./auth-ui.js";
 import {
     discardAllEntryBlocks,
+    isKeyboardRevealSuppressed,
     saveAllEntryBlocks,
     setAllEntriesEditable,
 } from "./blocks.js";
@@ -246,12 +247,14 @@ export function smoothRevealInVisualViewport(el) {
 /** If an editable entry block is focused and covered, reveal it above the keyboard. */
 function ensureFocusedBlockVisibleAboveKeyboard() {
     if (!editMode || isDesktopEditLayout()) return;
+    if (isKeyboardRevealSuppressed()) return;
     const el = document.activeElement;
     if (!isEntryEditTarget(el)) return;
     smoothRevealInVisualViewport(el);
 }
 
 function scheduleFocusedBlockReveal(delayMs = REVEAL_SETTLE_MS) {
+    if (isKeyboardRevealSuppressed()) return;
     if (revealViewportTimer != null) {
         clearTimeout(revealViewportTimer);
         revealViewportTimer = null;
@@ -284,6 +287,7 @@ function onEntryTap(e) {
 function onEditFocusIn(e) {
     if (!editMode || isDesktopEditLayout()) return;
     if (!isEntryEditTarget(e.target)) return;
+    if (isKeyboardRevealSuppressed()) return;
     if (focusRevealTimer != null) clearTimeout(focusRevealTimer);
     focusRevealTimer = setTimeout(() => {
         focusRevealTimer = null;
