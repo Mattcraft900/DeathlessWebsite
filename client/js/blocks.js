@@ -88,13 +88,8 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
         if (canEdit) {
             wireOwnEditable(span);
         } else if (editable && writer) {
-            // Foreign block: click inserts commentary at the tapped offset.
-            span.tabIndex = -1;
-            span.title = "Click where you want to insert your commentary";
-            span.addEventListener("click", (e) => {
-                e.stopPropagation();
-                insertCommentaryAtPoint(span, writer, e.clientX, e.clientY);
-            });
+            // Foreign block: tap inserts commentary at the tapped offset.
+            wireForeignCommentary(span, writer);
         }
 
         container.appendChild(span);
@@ -397,14 +392,15 @@ function isUnsavedContinuation(el, writerId) {
  * @param {HTMLElement} span
  */
 function discardIfEmpty(span) {
-    if (!span.isConnected || !isBlank(span)) {
-        syncEmptyAttr(span);
+    if (!span.isConnected || span.dataset.discarded === "1" || !isBlank(span)) {
+        if (span.isConnected && span.dataset.discarded !== "1") syncEmptyAttr(span);
         return;
     }
 
     const container = span.parentElement;
     const prev = blockSibling(span, "prev");
     const next = blockSibling(span, "next");
+    span.dataset.discarded = "1";
     if (
         prev &&
         next &&
@@ -436,6 +432,23 @@ function discardIfEmpty(span) {
         setStartsParagraph(next, false);
     }
     refreshBlockSeparators(container);
+}
+
+/**
+ * Drop other blank own-voice inserts in this entry before creating a new one,
+ * so blur-timeout discard doesn't rebuild the DOM under a pending tap.
+ * @param {HTMLElement|null|undefined} container
+ * @param {object} writer
+ * @param {HTMLElement|null} [exceptEl] keep this empty (e.g. reusing it)
+ */
+function discardOtherEmptyOwnBlocks(container, writer, exceptEl = null) {
+    if (!container || !writer) return;
+    const empties = entryBlocksInOrder(container).filter(
+        (el) => el !== exceptEl && isOwnEditableBlock(el, writer) && isBlank(el),
+    );
+    for (const el of empties) {
+        discardIfEmpty(el);
+    }
 }
 
 /* ---------------------------------------------------------- */
@@ -594,7 +607,43 @@ function wireOwnEditable(span) {
         focusBlockCaret(span, true);
     });
     span.addEventListener("blur", () => {
-        setTimeout(() => discardIfEmpty(span), 0);
+        setTimeout(() => {
+            if (!span.isConnected || span.dataset.discarded === "1") return;
+            discardIfEmpty(span);
+        }, 0);
+    });
+}
+
+/**
+ * Foreign (read-only) voice block: tap inserts commentary.
+ * pointerdown preventDefault keeps the soft keyboard up by avoiding a blur of
+ * the currently focused empty insert before we move focus ourselves.
+ * @param {HTMLElement} span
+ * @param {object} writer
+ */
+function wireForeignCommentary(span, writer) {
+    span.tabIndex = -1;
+    span.title = "Click where you want to insert your commentary";
+    /** @type {number|null} */
+    let activePointer = null;
+    span.addEventListener("pointerdown", (e) => {
+        if (e.button != null && e.button !== 0) return;
+        e.preventDefault();
+        activePointer = e.pointerId;
+    });
+    span.addEventListener("pointercancel", (e) => {
+        if (e.pointerId === activePointer) activePointer = null;
+    });
+    span.addEventListener("pointerup", (e) => {
+        if (activePointer !== e.pointerId) return;
+        activePointer = null;
+        e.stopPropagation();
+        insertCommentaryAtPoint(span, writer, e.clientX, e.clientY);
+    });
+    // Swallow click so container padding handler doesn't also fire after pointerup.
+    span.addEventListener("click", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
     });
 }
 
@@ -768,11 +817,15 @@ function snapOffsetToWordBoundary(text, offset) {
  * @param {object} writer
  */
 function insertOwnBlockAfter(afterSpan, writer) {
+    const container = afterSpan.parentElement;
     const next = blockSibling(afterSpan, "next");
     if (isOwnEditableBlock(next, writer)) {
+        discardOtherEmptyOwnBlocks(container, writer, next);
         focusBlockCaret(next, false);
         return;
     }
+
+    discardOtherEmptyOwnBlocks(container, writer);
 
     const formatMode = getFormatMode();
     const span = document.createElement("span");
@@ -780,7 +833,7 @@ function insertOwnBlockAfter(afterSpan, writer) {
     span.dataset.writerId = writer.id;
     span.dataset.sortRank = generateKeyBetween(
         afterSpan.dataset.sortRank ?? null,
-        next?.dataset.sortRank ?? null,
+        blockSibling(afterSpan, "next")?.dataset.sortRank ?? null,
     );
     span.contentEditable = "true";
     span.textContent = "";
@@ -799,18 +852,22 @@ function insertOwnBlockAfter(afterSpan, writer) {
  * @param {object} writer
  */
 function insertOwnBlockBefore(beforeSpan, writer) {
+    const container = beforeSpan.parentElement;
     const prev = blockSibling(beforeSpan, "prev");
     if (isOwnEditableBlock(prev, writer)) {
+        discardOtherEmptyOwnBlocks(container, writer, prev);
         focusBlockCaret(prev, true);
         return;
     }
+
+    discardOtherEmptyOwnBlocks(container, writer);
 
     const formatMode = getFormatMode();
     const span = document.createElement("span");
     span.className = `entry-block ${writer.cssClass} ${formatMode}`;
     span.dataset.writerId = writer.id;
     span.dataset.sortRank = generateKeyBetween(
-        prev?.dataset.sortRank ?? null,
+        blockSibling(beforeSpan, "prev")?.dataset.sortRank ?? null,
         beforeSpan.dataset.sortRank ?? null,
     );
     span.contentEditable = "true";
@@ -836,19 +893,41 @@ function insertOwnBlockBefore(beforeSpan, writer) {
  * @param {number} clientY
  */
 function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
-    const text = foreignSpan.textContent ?? "";
-    let offset = resolveClickOffset(foreignSpan, clientX, clientY);
+    const container = foreignSpan.parentElement;
+    discardOtherEmptyOwnBlocks(container, writer);
+
+    // Sync discard may rejoin a mid-split and remove a continuation under the tap.
+    let target = foreignSpan;
+    if (!target.isConnected && container) {
+        target =
+            entryBlocksInOrder(container).find((b) => {
+                const r = b.getBoundingClientRect();
+                return (
+                    clientX >= r.left &&
+                    clientX <= r.right &&
+                    clientY >= r.top &&
+                    clientY <= r.bottom
+                );
+            }) ?? null;
+        if (!target) return;
+        if (isOwnEditableBlock(target, writer)) {
+            focusBlockCaret(target, false);
+            return;
+        }
+    }
+
+    const text = target.textContent ?? "";
+    let offset = resolveClickOffset(target, clientX, clientY);
     offset = snapOffsetToWordBoundary(text, offset);
     const before = text.slice(0, offset);
     const after = text.slice(offset);
-    const next = blockSibling(foreignSpan, "next");
-    const baseRank = foreignSpan.dataset.sortRank ?? null;
+    const next = blockSibling(target, "next");
+    const baseRank = target.dataset.sortRank ?? null;
     const afterRank = next?.dataset.sortRank ?? null;
-    const container = foreignSpan.parentElement;
 
     // Edge click next to an existing own block → edit that block, don't insert again.
     if (!before.trim()) {
-        const prev = blockSibling(foreignSpan, "prev");
+        const prev = blockSibling(target, "prev");
         if (isOwnEditableBlock(prev, writer)) {
             focusBlockCaret(prev, true);
             return;
@@ -862,23 +941,23 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
     }
 
     if (!before.trim() && !after.trim()) {
-        insertOwnBlockAfter(foreignSpan, writer);
+        insertOwnBlockAfter(target, writer);
         return;
     }
 
     if (!before.trim()) {
-        insertOwnBlockBefore(foreignSpan, writer);
+        insertOwnBlockBefore(target, writer);
         return;
     }
 
     if (!after.trim()) {
-        insertOwnBlockAfter(foreignSpan, writer);
+        insertOwnBlockAfter(target, writer);
         return;
     }
 
     // Mid-split: keep before in original, insert own, then after as new foreign continuation.
     // Edge-trim halves so live spacing matches the saved (edge-trimmed) body contract.
-    foreignSpan.textContent = before.trimEnd();
+    target.textContent = before.trimEnd();
     const midRank = generateKeyBetween(baseRank, afterRank);
     const afterOwnRank = generateKeyBetween(midRank, afterRank);
     const formatMode = getFormatMode();
@@ -895,20 +974,20 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
     wireOwnEditable(own);
 
     const continuation = document.createElement("span");
-    continuation.className = foreignSpan.className;
-    continuation.dataset.writerId = foreignSpan.dataset.writerId;
+    continuation.className = target.className;
+    continuation.dataset.writerId = target.dataset.writerId;
     continuation.dataset.sortRank = afterOwnRank;
     continuation.dataset.splitContinuation = "1";
     continuation.contentEditable = "false";
     continuation.textContent = after.trimStart();
-    setVoiceName(continuation, foreignSpan.dataset.voiceName);
+    setVoiceName(continuation, target.dataset.voiceName);
     continuation.style.setProperty(
         "--writer-color",
-        foreignSpan.style.getPropertyValue("--writer-color"),
+        target.style.getPropertyValue("--writer-color"),
     );
     continuation.style.setProperty(
         "--writer-font",
-        foreignSpan.style.getPropertyValue("--writer-font"),
+        target.style.getPropertyValue("--writer-font"),
     );
     if (!continuation.style.getPropertyValue("--writer-color")) {
         continuation.style.removeProperty("--writer-color");
@@ -917,13 +996,9 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
         continuation.style.removeProperty("--writer-font");
     }
     setStartsParagraph(continuation, false);
-    continuation.title = "Click where you want to insert your commentary";
-    continuation.addEventListener("click", (e) => {
-        e.stopPropagation();
-        insertCommentaryAtPoint(continuation, writer, e.clientX, e.clientY);
-    });
+    wireForeignCommentary(continuation, writer);
 
-    foreignSpan.after(own, continuation);
+    target.after(own, continuation);
     refreshBlockSeparators(container);
     focusBlockCaret(own, false);
 }
@@ -1131,9 +1206,12 @@ function insertOwnBlockAtEnd(container, writer) {
     const blocks = entryBlocksInOrder(container);
     const last = blocks[blocks.length - 1] ?? null;
     if (isOwnEditableBlock(last, writer)) {
+        discardOtherEmptyOwnBlocks(container, writer, last);
         focusBlockCaret(last, true);
         return;
     }
+
+    discardOtherEmptyOwnBlocks(container, writer);
 
     const formatMode = getFormatMode();
     const span = document.createElement("span");

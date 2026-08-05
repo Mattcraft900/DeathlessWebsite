@@ -197,13 +197,14 @@ function isEntryEditTarget(el) {
 }
 
 const REVEAL_MARGIN_PX = 12;
-const REVEAL_SETTLE_MS = 100;
+const REVEAL_SETTLE_MS = 180;
 
 /**
  * Smoothly nudge the page so `el` sits fully inside the visual viewport
  * (minimal delta). Useful when the soft keyboard covers a focused block.
  * No-op on desktop edit layout. Safe to call from future mid-page reveals;
  * do not use for Jump To / back-to-top (those stay instant).
+ * No-op when `el` is already fully visible in the visual viewport.
  *
  * @param {HTMLElement} el
  */
@@ -227,6 +228,9 @@ export function smoothRevealInVisualViewport(el) {
     const rect = el.getBoundingClientRect();
     const limitBottom = vpBottom - footerClip - REVEAL_MARGIN_PX;
     const limitTop = vpTop + REVEAL_MARGIN_PX;
+
+    // Already fully visible — don't scroll (avoids fighting insert/focus races).
+    if (rect.top >= limitTop && rect.bottom <= limitBottom) return;
 
     let delta = 0;
     if (rect.bottom > limitBottom) {
