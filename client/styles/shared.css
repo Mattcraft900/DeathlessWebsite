@@ -968,11 +968,15 @@ hr,
     white-space: pre-wrap;
 }
 
-/* Zero-height marker between paragraphs (startsParagraph on next block) */
+/*
+ * Paragraph gap marker (startsParagraph on next block).
+ * Use height, not margin-top: a zero-height box with only margin collapses in
+ * inline voice-span flows, so the break can vanish between e.g. <Tome?> and
+ * the next Lucy paragraph.
+ */
 .entry-para-break {
     display: block;
-    margin-top: 1em;
-    height: 0;
+    height: 1em;
     overflow: hidden;
     user-select: none;
     pointer-events: none;

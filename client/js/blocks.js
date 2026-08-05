@@ -203,7 +203,7 @@ function setVoiceName(span, displayName) {
     else delete span.dataset.voiceName;
 }
 
-/** @returns {HTMLSpanElement} zero-height break between paragraphs */
+/** @returns {HTMLSpanElement} paragraph-gap marker between voice blocks */
 function createParaBreak() {
     const el = document.createElement("span");
     el.className = "entry-para-break";
@@ -1464,7 +1464,9 @@ function hasContinuationAfter(result, afterId, remainder, foreignWriterId) {
  * Steps (high level):
  * 1. Clone remote as result
  * 2. Drop ids this writer deleted locally (present in base, absent in local)
- * 3. Apply this writer's body/flag updates on own blocks; admin may update foreign too
+ * 3. Apply this writer's body/flag updates on own blocks; admin may update
+ *    foreign bodies too; anyone may flip foreign startsParagraph when body
+ *    is unchanged (layout-only promote)
  * 4. Apply compatible foreign shortens if remote still has the untouched base body
  * 5. Insert no-id runs from local, anchored after/before surviving ids; skip
  *    re-inserting a foreign continuation if remote already split the same place
@@ -1507,6 +1509,17 @@ function mergeBlocks(base, local, remote, writerId) {
                 target.body = b.body;
             }
             if (baseBlock && Boolean(b.startsParagraph) !== Boolean(baseBlock.startsParagraph)) {
+                target.startsParagraph = Boolean(b.startsParagraph);
+            }
+        } else {
+            // Layout-only: promote/demote paragraph break on a foreign block
+            // without changing its text (Enter at end of own voice before it).
+            const baseBlock = baseById.get(b.id);
+            if (
+                baseBlock &&
+                b.body === baseBlock.body &&
+                Boolean(b.startsParagraph) !== Boolean(baseBlock.startsParagraph)
+            ) {
                 target.startsParagraph = Boolean(b.startsParagraph);
             }
         }

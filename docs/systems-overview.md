@@ -33,6 +33,7 @@ An **entry** (game-date chunk or character bio) is an ordered list of **blocks**
 - Display: client inserts a space between adjacent blocks, or a paragraph break when the next block starts a paragraph.
 - Own voice (or admin): `contentEditable`; Enter is handled in JS (boundary flag flips vs mid-text split).
 - Foreign voice: click inserts an empty commentary block at that point (may shorten the foreign block and create a continuation).
+- Paragraph layout: `startsParagraph` may be flipped on a neighboring foreign block when its body is unchanged (e.g. Enter at the end of your text to push their block onto a new paragraph). Body text of another writer remains protected.
 - Save: PUT with expected `version`. On **409**, client 3-way-merges `base` (edit-enter snapshot) + `local` DOM + `remote` payload and retries. Footer Save walks every editable entry on the page **one PUT at a time** (no batch transaction).
 - Seed data still authors paragraphs as string arrays; the seed parser sets `startsParagraph` on the first block of each paragraph (see `scripts/seed.ts`).
 
