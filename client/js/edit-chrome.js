@@ -24,10 +24,13 @@ import {
 } from "./auth-ui.js";
 import {
     discardAllEntryBlocks,
-    isKeyboardRevealSuppressed,
     saveAllEntryBlocks,
     setAllEntriesEditable,
 } from "./blocks.js";
+import {
+    requestRevealIfCovered,
+    setKeyboardRevealHandler,
+} from "./edit-scroll.js";
 
 /* ---------------------------------------------------------- */
 /* -- Constants & module state                             -- */
@@ -60,10 +63,6 @@ let scrollTicking = false;
 let chromeHidden = false;
 let headerHidden = false;
 let lastViewportHeight = 0;
-/** @type {ReturnType<typeof setTimeout>|null} */
-let revealViewportTimer = null;
-/** @type {ReturnType<typeof setTimeout>|null} */
-let focusRevealTimer = null;
 
 let pressTimer = null;
 let pressStartX = 0;
@@ -198,7 +197,6 @@ function isEntryEditTarget(el) {
 }
 
 const REVEAL_MARGIN_PX = 12;
-const REVEAL_SETTLE_MS = 180;
 
 /**
  * Smoothly nudge the page so `el` sits fully inside the visual viewport
@@ -247,22 +245,9 @@ export function smoothRevealInVisualViewport(el) {
 /** If an editable entry block is focused and covered, reveal it above the keyboard. */
 function ensureFocusedBlockVisibleAboveKeyboard() {
     if (!editMode || isDesktopEditLayout()) return;
-    if (isKeyboardRevealSuppressed()) return;
     const el = document.activeElement;
     if (!isEntryEditTarget(el)) return;
     smoothRevealInVisualViewport(el);
-}
-
-function scheduleFocusedBlockReveal(delayMs = REVEAL_SETTLE_MS) {
-    if (isKeyboardRevealSuppressed()) return;
-    if (revealViewportTimer != null) {
-        clearTimeout(revealViewportTimer);
-        revealViewportTimer = null;
-    }
-    revealViewportTimer = setTimeout(() => {
-        revealViewportTimer = null;
-        ensureFocusedBlockVisibleAboveKeyboard();
-    }, delayMs);
 }
 
 /** Capture-phase: typing in a block → hide header, show footer. */
@@ -287,12 +272,7 @@ function onEntryTap(e) {
 function onEditFocusIn(e) {
     if (!editMode || isDesktopEditLayout()) return;
     if (!isEntryEditTarget(e.target)) return;
-    if (isKeyboardRevealSuppressed()) return;
-    if (focusRevealTimer != null) clearTimeout(focusRevealTimer);
-    focusRevealTimer = setTimeout(() => {
-        focusRevealTimer = null;
-        ensureFocusedBlockVisibleAboveKeyboard();
-    }, REVEAL_SETTLE_MS);
+    requestRevealIfCovered();
 }
 
 function onEditFocusOut() {
@@ -311,7 +291,7 @@ function onViewportResize() {
         showHeader();
     } else if (height < lastViewportHeight - 40) {
         // Keyboard opening (or viewport shrinking) — keep focused block visible.
-        scheduleFocusedBlockReveal();
+        requestRevealIfCovered();
     }
     lastViewportHeight = height;
 }
@@ -590,6 +570,8 @@ function buildChrome() {
  * Idempotent if `#edit-chrome` already exists.
  */
 export function initEditChrome() {
+    setKeyboardRevealHandler(ensureFocusedBlockVisibleAboveKeyboard);
+
     if (document.getElementById("edit-chrome")) {
         refreshSidebarEditButtons();
         return;

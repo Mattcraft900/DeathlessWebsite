@@ -29,6 +29,7 @@
 import { generateKeyBetween } from "fractional-indexing";
 import { apiPut } from "./api.js";
 import { getCurrentWriter } from "./auth-ui.js";
+import { holdScrollDuring } from "./edit-scroll.js";
 import { applyHandwritingStyle } from "./fonts.js";
 
 /* ---------------------------------------------------------- */
@@ -48,23 +49,8 @@ function getFormatMode() {
 /* ---------------------------------------------------------- */
 
 /** @type {number} */
-let keyboardRevealSuppressedUntil = 0;
-/** @type {number} */
 let ghostClickSuppressedUntil = 0;
 let ghostClickShieldWired = false;
-
-/**
- * Skip edit-chrome keyboard reveal scrolls for a short window after pointer inserts.
- * @param {number} [ms=400]
- */
-export function suppressKeyboardReveal(ms = 400) {
-    keyboardRevealSuppressedUntil = performance.now() + ms;
-}
-
-/** @returns {boolean} */
-export function isKeyboardRevealSuppressed() {
-    return performance.now() < keyboardRevealSuppressedUntil;
-}
 
 /**
  * Block the browser's delayed click after pointerup+scroll so it can't hit
@@ -82,23 +68,6 @@ function armGhostClickSuppression(ms = 400) {
     };
     document.addEventListener("click", block, true);
     document.addEventListener("auxclick", block, true);
-}
-
-/**
- * Run insert DOM work without letting discard/rejoin yank scrollY; then
- * restore scroll and suppress keyboard reveal for pointer-driven hops.
- * @template T
- * @param {() => T} fn
- * @returns {T}
- */
-function withInsertScrollStability(fn) {
-    const scrollY = window.scrollY;
-    try {
-        return fn();
-    } finally {
-        window.scrollTo({ top: scrollY, behavior: "instant" });
-        suppressKeyboardReveal(400);
-    }
 }
 
 /* ---------------------------------------------------------- */
@@ -455,41 +424,43 @@ function discardIfEmpty(span) {
         return;
     }
 
-    const container = span.parentElement;
-    const prev = blockSibling(span, "prev");
-    const next = blockSibling(span, "next");
-    span.dataset.discarded = "1";
-    if (
-        prev &&
-        next &&
-        prev.dataset.writerId &&
-        isUnsavedContinuation(next, prev.dataset.writerId)
-    ) {
-        const left = prev.textContent ?? "";
-        const right = next.textContent ?? "";
-        const leftVis = stripZwsp(left);
-        const rightVis = stripZwsp(right);
-        const needSpace =
-            leftVis.length > 0 &&
-            rightVis.length > 0 &&
-            !/\s$/.test(leftVis) &&
-            !/^\s/.test(rightVis);
-        prev.textContent = needSpace ? `${left} ${right}` : `${left}${right}`;
-        next.remove();
-        span.remove();
-        refreshBlockSeparators(container);
-        return;
-    }
+    holdScrollDuring(() => {
+        const container = span.parentElement;
+        const prev = blockSibling(span, "prev");
+        const next = blockSibling(span, "next");
+        span.dataset.discarded = "1";
+        if (
+            prev &&
+            next &&
+            prev.dataset.writerId &&
+            isUnsavedContinuation(next, prev.dataset.writerId)
+        ) {
+            const left = prev.textContent ?? "";
+            const right = next.textContent ?? "";
+            const leftVis = stripZwsp(left);
+            const rightVis = stripZwsp(right);
+            const needSpace =
+                leftVis.length > 0 &&
+                rightVis.length > 0 &&
+                !/\s$/.test(leftVis) &&
+                !/^\s/.test(rightVis);
+            prev.textContent = needSpace ? `${left} ${right}` : `${left}${right}`;
+            next.remove();
+            span.remove();
+            refreshBlockSeparators(container);
+            return;
+        }
 
-    const wasFirst = !prev;
-    span.remove();
-    // If we removed the first block of the entry, the new first shouldn't keep
-    // a stale "starts paragraph" from being the old second block's flag alone —
-    // first block of the whole entry is never a "break after previous".
-    if (wasFirst && next) {
-        setStartsParagraph(next, false);
-    }
-    refreshBlockSeparators(container);
+        const wasFirst = !prev;
+        span.remove();
+        // If we removed the first block of the entry, the new first shouldn't keep
+        // a stale "starts paragraph" from being the old second block's flag alone —
+        // first block of the whole entry is never a "break after previous".
+        if (wasFirst && next) {
+            setStartsParagraph(next, false);
+        }
+        refreshBlockSeparators(container);
+    });
 }
 
 /**
@@ -876,7 +847,7 @@ function snapOffsetToWordBoundary(text, offset) {
  * @param {object} writer
  */
 function insertOwnBlockAfter(afterSpan, writer) {
-    withInsertScrollStability(() => {
+    holdScrollDuring(() => {
         const container = afterSpan.parentElement;
         const next = blockSibling(afterSpan, "next");
         if (isOwnEditableBlock(next, writer)) {
@@ -913,7 +884,7 @@ function insertOwnBlockAfter(afterSpan, writer) {
  * @param {object} writer
  */
 function insertOwnBlockBefore(beforeSpan, writer) {
-    withInsertScrollStability(() => {
+    holdScrollDuring(() => {
         const container = beforeSpan.parentElement;
         const prev = blockSibling(beforeSpan, "prev");
         if (isOwnEditableBlock(prev, writer)) {
@@ -956,7 +927,7 @@ function insertOwnBlockBefore(beforeSpan, writer) {
  * @param {number} clientY
  */
 function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
-    withInsertScrollStability(() => {
+    holdScrollDuring(() => {
         const container = foreignSpan.parentElement;
         discardOtherEmptyOwnBlocks(container, writer);
 
@@ -1124,12 +1095,18 @@ function pointInGlyphBoxes(el, x, y) {
  */
 function placeAtBlockEnd(above, writer) {
     if (above.isContentEditable) {
-        focusBlockCaret(above, true);
+        holdScrollDuring(() => {
+            discardOtherEmptyOwnBlocks(above.parentElement, writer, above);
+            focusBlockCaret(above, true);
+        });
         return;
     }
     const next = blockSibling(above, "next");
     if (isOwnEditableBlock(next, writer)) {
-        focusBlockCaret(next, false);
+        holdScrollDuring(() => {
+            discardOtherEmptyOwnBlocks(above.parentElement, writer, next);
+            focusBlockCaret(next, false);
+        });
         return;
     }
     insertOwnBlockAfter(above, writer);
@@ -1239,7 +1216,10 @@ function handleContainerClick(container, writer, clientX, clientY) {
     if (!best) return;
 
     if (best.block.isContentEditable) {
-        focusBlockCaret(best.block, best.atEnd);
+        holdScrollDuring(() => {
+            discardOtherEmptyOwnBlocks(container, writer, best.block);
+            focusBlockCaret(best.block, best.atEnd);
+        });
         return;
     }
 
@@ -1247,7 +1227,10 @@ function handleContainerClick(container, writer, clientX, clientY) {
     if (best.atEnd) {
         const next = blockSibling(best.block, "next");
         if (isOwnEditableBlock(next, writer)) {
-            focusBlockCaret(next, false);
+            holdScrollDuring(() => {
+                discardOtherEmptyOwnBlocks(container, writer, next);
+                focusBlockCaret(next, false);
+            });
             return;
         }
         insertOwnBlockAfter(best.block, writer);
@@ -1256,7 +1239,10 @@ function handleContainerClick(container, writer, clientX, clientY) {
 
     const prev = blockSibling(best.block, "prev");
     if (isOwnEditableBlock(prev, writer)) {
-        focusBlockCaret(prev, true);
+        holdScrollDuring(() => {
+            discardOtherEmptyOwnBlocks(container, writer, prev);
+            focusBlockCaret(prev, true);
+        });
         return;
     }
     insertOwnBlockBefore(best.block, writer);
@@ -1268,7 +1254,7 @@ function handleContainerClick(container, writer, clientX, clientY) {
  * @param {object} writer
  */
 function insertOwnBlockAtEnd(container, writer) {
-    withInsertScrollStability(() => {
+    holdScrollDuring(() => {
         const blocks = entryBlocksInOrder(container);
         const last = blocks[blocks.length - 1] ?? null;
         if (isOwnEditableBlock(last, writer)) {
