@@ -59,6 +59,10 @@ let scrollTicking = false;
 let chromeHidden = false;
 let headerHidden = false;
 let lastViewportHeight = 0;
+/** @type {ReturnType<typeof setTimeout>|null} */
+let revealViewportTimer = null;
+/** @type {ReturnType<typeof setTimeout>|null} */
+let focusRevealTimer = null;
 
 let pressTimer = null;
 let pressStartX = 0;
@@ -192,6 +196,68 @@ function isEntryEditTarget(el) {
     );
 }
 
+const REVEAL_MARGIN_PX = 12;
+const REVEAL_SETTLE_MS = 100;
+
+/**
+ * Smoothly nudge the page so `el` sits fully inside the visual viewport
+ * (minimal delta). Useful when the soft keyboard covers a focused block.
+ * No-op on desktop edit layout. Safe to call from future mid-page reveals;
+ * do not use for Jump To / back-to-top (those stay instant).
+ *
+ * @param {HTMLElement} el
+ */
+export function smoothRevealInVisualViewport(el) {
+    if (!(el instanceof HTMLElement) || !el.isConnected) return;
+    if (isDesktopEditLayout()) return;
+
+    const vp = window.visualViewport;
+    const vpTop = vp?.offsetTop ?? 0;
+    const vpHeight = vp?.height ?? window.innerHeight;
+    const vpBottom = vpTop + vpHeight;
+
+    let footerClip = 0;
+    if (footerEl && !footerEl.hidden && !footerEl.classList.contains("edit-chrome-hidden")) {
+        const fr = footerEl.getBoundingClientRect();
+        if (fr.height > 0 && fr.top < vpBottom && fr.bottom > vpTop) {
+            footerClip = Math.max(0, vpBottom - fr.top);
+        }
+    }
+
+    const rect = el.getBoundingClientRect();
+    const limitBottom = vpBottom - footerClip - REVEAL_MARGIN_PX;
+    const limitTop = vpTop + REVEAL_MARGIN_PX;
+
+    let delta = 0;
+    if (rect.bottom > limitBottom) {
+        delta = rect.bottom - limitBottom;
+    } else if (rect.top < limitTop) {
+        delta = rect.top - limitTop;
+    }
+
+    if (Math.abs(delta) < 1) return;
+    window.scrollBy({ top: delta, behavior: "smooth" });
+}
+
+/** If an editable entry block is focused and covered, reveal it above the keyboard. */
+function ensureFocusedBlockVisibleAboveKeyboard() {
+    if (!editMode || isDesktopEditLayout()) return;
+    const el = document.activeElement;
+    if (!isEntryEditTarget(el)) return;
+    smoothRevealInVisualViewport(el);
+}
+
+function scheduleFocusedBlockReveal(delayMs = REVEAL_SETTLE_MS) {
+    if (revealViewportTimer != null) {
+        clearTimeout(revealViewportTimer);
+        revealViewportTimer = null;
+    }
+    revealViewportTimer = setTimeout(() => {
+        revealViewportTimer = null;
+        ensureFocusedBlockVisibleAboveKeyboard();
+    }, delayMs);
+}
+
 /** Capture-phase: typing in a block → hide header, show footer. */
 function onEditTyping(e) {
     if (!editMode) return;
@@ -211,6 +277,16 @@ function onEntryTap(e) {
     setChromeHidden(false);
 }
 
+function onEditFocusIn(e) {
+    if (!editMode || isDesktopEditLayout()) return;
+    if (!isEntryEditTarget(e.target)) return;
+    if (focusRevealTimer != null) clearTimeout(focusRevealTimer);
+    focusRevealTimer = setTimeout(() => {
+        focusRevealTimer = null;
+        ensureFocusedBlockVisibleAboveKeyboard();
+    }, REVEAL_SETTLE_MS);
+}
+
 function onEditFocusOut() {
     if (!editMode) return;
     requestAnimationFrame(() => {
@@ -225,6 +301,9 @@ function onViewportResize() {
     const height = vp?.height ?? window.innerHeight;
     if (height > lastViewportHeight + 40) {
         showHeader();
+    } else if (height < lastViewportHeight - 40) {
+        // Keyboard opening (or viewport shrinking) — keep focused block visible.
+        scheduleFocusedBlockReveal();
     }
     lastViewportHeight = height;
 }
@@ -523,6 +602,7 @@ export function initEditChrome() {
     document.addEventListener("beforeinput", onEditTyping, true);
     document.addEventListener("input", onEditTyping, true);
     document.addEventListener("pointerdown", onEntryTap, true);
+    document.addEventListener("focusin", onEditFocusIn, true);
     document.addEventListener("focusout", onEditFocusOut, true);
 
     const vp = window.visualViewport;
