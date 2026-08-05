@@ -225,6 +225,15 @@ function refreshVoiceRunMarkers(blocks) {
  */
 function refreshBlockSeparators(container) {
     if (!container) return;
+    const active = document.activeElement;
+    const restoreFocus =
+        active instanceof HTMLElement &&
+        container.contains(active) &&
+        isEntryBlock(active)
+            ? active
+            : null;
+    const restoreOffset = restoreFocus ? getCaretOffsetInBlock(restoreFocus) : 0;
+
     const blocks = [...container.children].filter(isEntryBlock);
     while (container.firstChild) container.removeChild(container.firstChild);
     for (let i = 0; i < blocks.length; i++) {
@@ -241,6 +250,11 @@ function refreshBlockSeparators(container) {
         container.appendChild(blocks[i]);
     }
     refreshVoiceRunMarkers(blocks);
+
+    if (restoreFocus?.isConnected) {
+        restoreFocus.focus({ preventScroll: true });
+        placeCaretAtOffset(restoreFocus, restoreOffset);
+    }
 }
 
 /**
@@ -397,7 +411,16 @@ function discardIfEmpty(span) {
         prev.dataset.writerId &&
         isUnsavedContinuation(next, prev.dataset.writerId)
     ) {
-        prev.textContent = `${prev.textContent ?? ""}${next.textContent ?? ""}`;
+        const left = prev.textContent ?? "";
+        const right = next.textContent ?? "";
+        const leftVis = stripZwsp(left);
+        const rightVis = stripZwsp(right);
+        const needSpace =
+            leftVis.length > 0 &&
+            rightVis.length > 0 &&
+            !/\s$/.test(leftVis) &&
+            !/^\s/.test(rightVis);
+        prev.textContent = needSpace ? `${left} ${right}` : `${left}${right}`;
         next.remove();
         span.remove();
         refreshBlockSeparators(container);
@@ -589,31 +612,44 @@ function distanceToRect(x, y, rect) {
 /**
  * Focus a block and place the caret at start or end of its text.
  * Re-applies after rAF because some browsers reset caret to 0 on focus.
+ * Uses preventScroll so mobile rebuilds / off-screen empties don't jump the viewport.
  *
  * @param {HTMLElement} span
  * @param {boolean} atEnd
  */
 function focusBlockCaret(span, atEnd) {
-    span.focus();
+    span.focus({ preventScroll: true });
     const place = () => {
-        const selection = window.getSelection();
-        if (!selection) return;
-        const range = document.createRange();
         const textNode = [...span.childNodes].find((n) => n.nodeType === Node.TEXT_NODE);
-        if (textNode) {
-            const len = textNode.textContent?.length ?? 0;
-            range.setStart(textNode, atEnd ? len : 0);
-            range.collapse(true);
-        } else {
-            range.selectNodeContents(span);
-            range.collapse(!atEnd);
-        }
-        selection.removeAllRanges();
-        selection.addRange(range);
+        const len = textNode?.textContent?.length ?? 0;
+        placeCaretAtOffset(span, atEnd ? len : 0);
     };
     place();
     // Some browsers reset the caret to offset 0 on focus; re-apply after that.
     requestAnimationFrame(place);
+}
+
+/**
+ * Place the caret at a character offset within a block (clamped).
+ * @param {HTMLElement} span
+ * @param {number} offset
+ */
+function placeCaretAtOffset(span, offset) {
+    const selection = window.getSelection();
+    if (!selection) return;
+    const range = document.createRange();
+    const textNode = [...span.childNodes].find((n) => n.nodeType === Node.TEXT_NODE);
+    if (textNode) {
+        const len = textNode.textContent?.length ?? 0;
+        const o = Math.max(0, Math.min(offset, len));
+        range.setStart(textNode, o);
+        range.collapse(true);
+    } else {
+        range.selectNodeContents(span);
+        range.collapse(true);
+    }
+    selection.removeAllRanges();
+    selection.addRange(range);
 }
 
 /**
