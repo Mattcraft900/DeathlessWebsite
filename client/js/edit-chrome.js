@@ -5,8 +5,9 @@
  * ---------------
  * - Tap FAB → enter edit mode (or open login first).
  * - Long-press FAB (~500ms) → account sheet (log out / change writer).
- * - In edit mode: FAB hides, full-width Save/Cancel footer shows.
- * - Scroll direction hides/shows FAB/footer; typing reveals footer.
+ * - In edit mode: FAB hides, full-width Save/Cancel footer shows (pinned above
+ *   the soft keyboard; not scroll-hidden).
+ * - Outside edit mode: scroll direction hides/shows the FAB.
  *
  * Desktop (≥900px)
  * ----------------
@@ -151,9 +152,29 @@ function syncChromeVisibility() {
     showHeader();
     chromeHidden = true;
     setChromeHidden(false);
+    syncFooterToVisualViewport();
 }
 
-/** Slide FAB/footer off-screen while scrolling down (mobile only). */
+/**
+ * Keep the mobile Save/Cancel footer glued to the bottom of the visual viewport
+ * (above the soft keyboard) instead of the layout viewport.
+ */
+function syncFooterToVisualViewport() {
+    if (!footerEl) return;
+    if (footerEl.hidden || isDesktopEditLayout()) {
+        footerEl.style.bottom = "";
+        return;
+    }
+    const vv = window.visualViewport;
+    if (!vv) {
+        footerEl.style.bottom = "0px";
+        return;
+    }
+    const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    footerEl.style.bottom = `${inset}px`;
+}
+
+/** Slide FAB off-screen while scrolling down (mobile only). Footer stays put in edit mode. */
 function setChromeHidden(hidden) {
     if (isDesktopEditLayout()) {
         chromeHidden = false;
@@ -164,7 +185,8 @@ function setChromeHidden(hidden) {
     if (chromeHidden === hidden) return;
     chromeHidden = hidden;
     fabEl?.classList.toggle("edit-chrome-hidden", hidden);
-    footerEl?.classList.toggle("edit-chrome-hidden", hidden);
+    // Edit footer stays visible above the keyboard; never scroll-hide it.
+    footerEl?.classList.remove("edit-chrome-hidden");
 }
 
 function showHeader() {
@@ -199,11 +221,41 @@ function isEntryEditTarget(el) {
 const REVEAL_MARGIN_PX = 12;
 
 /**
- * Smoothly nudge the page so `el` sits fully inside the visual viewport
+ * Prefer the caret/selection line inside `el` for minimal keyboard reveals;
+ * fall back to the full block box when no usable caret rect exists.
+ * @param {HTMLElement} el
+ * @returns {DOMRect}
+ */
+function revealRectForBlock(el) {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        if (el.contains(range.commonAncestorContainer)) {
+            const rects = range.getClientRects();
+            for (let i = rects.length - 1; i >= 0; i--) {
+                const r = rects[i];
+                if (r.height >= 1 || r.width >= 1) return r;
+            }
+            const br = range.getBoundingClientRect();
+            if (br.height >= 1 || br.width >= 1) return br;
+            // Collapsed caret in empty/ZWSP blocks often has a zero-size rect —
+            // synthesize a one-line band at the caret top within the block.
+            if (br.top !== 0 || br.left !== 0) {
+                const block = el.getBoundingClientRect();
+                const lineH = Math.max(16, Math.min(32, block.height || 20));
+                return new DOMRect(br.left, br.top, Math.max(1, br.width), lineH);
+            }
+        }
+    }
+    return el.getBoundingClientRect();
+}
+
+/**
+ * Smoothly nudge the page so the caret (or block) sits inside the visual viewport
  * (minimal delta). Useful when the soft keyboard covers a focused block.
  * No-op on desktop edit layout. Safe to call from future mid-page reveals;
  * do not use for Jump To / back-to-top (those stay instant).
- * No-op when `el` is already fully visible in the visual viewport.
+ * No-op when the reveal target is already fully visible in the visual viewport.
  *
  * @param {HTMLElement} el
  */
@@ -217,14 +269,14 @@ export function smoothRevealInVisualViewport(el) {
     const vpBottom = vpTop + vpHeight;
 
     let footerClip = 0;
-    if (footerEl && !footerEl.hidden && !footerEl.classList.contains("edit-chrome-hidden")) {
+    if (footerEl && !footerEl.hidden) {
         const fr = footerEl.getBoundingClientRect();
         if (fr.height > 0 && fr.top < vpBottom && fr.bottom > vpTop) {
             footerClip = Math.max(0, vpBottom - fr.top);
         }
     }
 
-    const rect = el.getBoundingClientRect();
+    const rect = revealRectForBlock(el);
     const limitBottom = vpBottom - footerClip - REVEAL_MARGIN_PX;
     const limitTop = vpTop + REVEAL_MARGIN_PX;
 
@@ -285,6 +337,7 @@ function onEditFocusOut() {
 }
 
 function onViewportResize() {
+    syncFooterToVisualViewport();
     const vp = window.visualViewport;
     const height = vp?.height ?? window.innerHeight;
     if (height > lastViewportHeight + 40) {
@@ -598,7 +651,9 @@ export function initEditChrome() {
     const vp = window.visualViewport;
     if (vp) {
         vp.addEventListener("resize", onViewportResize);
+        vp.addEventListener("scroll", syncFooterToVisualViewport);
     } else {
         window.addEventListener("resize", onViewportResize);
     }
+    syncFooterToVisualViewport();
 }

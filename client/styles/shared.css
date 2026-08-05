@@ -523,12 +523,6 @@ nav a {
     pointer-events: none;
 }
 
-.edit-footer.edit-chrome-hidden {
-    transform: translateY(100%);
-    opacity: 0;
-    pointer-events: none;
-}
-
 .edit-fab {
     position: fixed;
     z-index: 900;
@@ -576,16 +570,16 @@ nav a {
     gap: 0;
     background: var(--color-nav-bg);
     border-top: 3px solid var(--color-border);
-    padding: 0.5rem max(0.5rem, env(safe-area-inset-right))
-        max(0.5rem, env(safe-area-inset-bottom))
-        max(0.5rem, env(safe-area-inset-left));
+    padding: 0.3rem max(0.4rem, env(safe-area-inset-right))
+        max(0.3rem, env(safe-area-inset-bottom))
+        max(0.4rem, env(safe-area-inset-left));
     box-shadow: 0 -4px 20px var(--color-shadow);
 }
 
 .edit-footer-btn {
     flex: 1 1 0;
-    min-height: 48px;
-    margin: 0.25rem;
+    min-height: 40px;
+    margin: 0.15rem;
     border: none;
     border-radius: 8px;
     font-family: var(--subheading-font);
@@ -729,7 +723,7 @@ nav a {
 
 /* Room for the fixed Save/Cancel bar while editing (mobile footer) */
 body.edit-mode {
-    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(3.75rem + env(safe-area-inset-bottom));
 }
 
 @media screen and (min-width: 900px) {

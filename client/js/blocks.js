@@ -625,15 +625,42 @@ function wireOwnEditable(span) {
     // Empty remainder of the last line before a paragraph break often hits the
     // editable span itself (especially admin/Lucy). Treat that as "caret at end"
     // instead of letting the browser put the caret at the start of the next para.
+    // On mobile, always preventDefault so the browser doesn't scroll-into-view;
+    // we place the caret ourselves with preventScroll (same as inserts).
     span.addEventListener("pointerdown", (e) => {
         if (e.button != null && e.button !== 0) return;
+
         const next = blockSibling(span, "next");
-        if (!next || !readStartsParagraph(next)) return;
-        const last = blockEdgeAnchors(span).end.rect;
-        if (e.clientY < last.top - 2 || e.clientY > last.bottom + 2) return;
-        if (e.clientX <= last.right) return;
+        const last = next && readStartsParagraph(next) ? blockEdgeAnchors(span).end.rect : null;
+        const tapPastLastLineEnd =
+            last &&
+            e.clientY >= last.top - 2 &&
+            e.clientY <= last.bottom + 2 &&
+            e.clientX > last.right;
+
+        const mobile = window.matchMedia("(max-width: 899px)").matches;
+        if (!mobile) {
+            if (!tapPastLastLineEnd) return;
+            e.preventDefault();
+            focusBlockCaret(span, true);
+            return;
+        }
+
         e.preventDefault();
-        focusBlockCaret(span, true);
+        if (tapPastLastLineEnd) {
+            focusBlockCaret(span, true);
+            return;
+        }
+
+        const text = span.textContent ?? "";
+        const offset = Math.max(
+            0,
+            Math.min(offsetFromPointInSpan(span, e.clientX, e.clientY), text.length),
+        );
+        span.focus({ preventScroll: true });
+        const place = () => placeCaretAtOffset(span, offset);
+        place();
+        requestAnimationFrame(place);
     });
     span.addEventListener("blur", () => {
         setTimeout(() => {
