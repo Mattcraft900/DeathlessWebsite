@@ -114,6 +114,8 @@ export function renderEntryBlocks(container, entry, { editable = false } = {}) {
                 sortRank: b.sortRank,
                 writerCssClass: b.writerCssClass,
                 writerDisplayName: b.writerDisplayName,
+                writerHandwritingColor: b.writerHandwritingColor,
+                writerHandwritingFont: b.writerHandwritingFont,
             })),
         };
 
@@ -216,8 +218,8 @@ function refreshVoiceRunMarkers(blocks) {
  * before each block after the first. Call this after any insert/remove/split
  * that changes block order or startsParagraph flags.
  *
- * Spaces next to brand-new unsaved editable blocks (no `data-block-id` yet) are
- * omitted so inserting commentary doesn't shift neighbors until Save.
+ * Skip the separator space when a neighbor already has edge whitespace so
+ * mid-split inserts next to an existing space don't show a double gap.
  *
  * @param {HTMLElement|null|undefined} container
  */
@@ -230,8 +232,8 @@ function refreshBlockSeparators(container) {
             if (readStartsParagraph(blocks[i])) {
                 container.appendChild(createParaBreak());
             } else if (
-                !isUnsavedEditableBlock(blocks[i]) &&
-                !isUnsavedEditableBlock(blocks[i - 1])
+                !blockHasEdgeWhitespace(blocks[i - 1], "end") &&
+                !blockHasEdgeWhitespace(blocks[i], "start")
             ) {
                 container.appendChild(document.createTextNode(" "));
             }
@@ -241,9 +243,15 @@ function refreshBlockSeparators(container) {
     refreshVoiceRunMarkers(blocks);
 }
 
-/** Editable block created this session — not yet persisted (no server id). */
-function isUnsavedEditableBlock(el) {
-    return isEntryBlock(el) && el.isContentEditable && !el.dataset.blockId;
+/**
+ * Whether a block's visible text (ZWSP ignored) already has whitespace on an edge.
+ * @param {HTMLElement} el
+ * @param {"start"|"end"} side
+ */
+function blockHasEdgeWhitespace(el, side) {
+    const t = stripZwsp(el.textContent ?? "");
+    if (!t) return false;
+    return side === "end" ? /\s$/.test(t) : /^\s/.test(t);
 }
 
 /**
@@ -301,9 +309,46 @@ function isOwnEditableBlock(el, writer) {
     return isEntryBlock(el) && el.isContentEditable && el.dataset.writerId === writer.id;
 }
 
+/** Zero-width space: keeps caret between CSS <> brackets on empty non-Lucy inserts. */
+const ZWSP = "\u200B";
+
+/** @param {string|null|undefined} text */
+function stripZwsp(text) {
+    return (text ?? "").replaceAll(ZWSP, "");
+}
+
+/** @param {HTMLElement} el */
+function isNonLucyBlock(el) {
+    return isEntryBlock(el) && !el.classList.contains("voice-lucy");
+}
+
 /** @param {HTMLElement} el */
 function isBlank(el) {
-    return !(el.textContent ?? "").trim();
+    return !stripZwsp(el.textContent ?? "").trim();
+}
+
+/**
+ * Keep a ZWSP text node in empty non-Lucy editable blocks so the caret sits
+ * between ::before `<` and ::after `>`. Strip ZWSP once real text exists.
+ * @param {HTMLElement} span
+ * @returns {boolean} true if textContent was changed
+ */
+function ensureNonLucyPlaceholder(span) {
+    if (!span.isContentEditable || !isNonLucyBlock(span)) return false;
+    const raw = span.textContent ?? "";
+    if (isBlank(span)) {
+        if (raw !== ZWSP) {
+            span.textContent = ZWSP;
+            return true;
+        }
+        return false;
+    }
+    const cleaned = stripZwsp(raw);
+    if (cleaned !== raw) {
+        span.textContent = cleaned;
+        return true;
+    }
+    return false;
 }
 
 /** Toggle `data-empty` for CSS placeholders on blank editable blocks. */
@@ -496,8 +541,15 @@ function handleEnterInOwnBlock(span, writer, e) {
  * @param {HTMLElement} span
  */
 function wireOwnEditable(span) {
+    ensureNonLucyPlaceholder(span);
     syncEmptyAttr(span);
-    span.addEventListener("input", () => syncEmptyAttr(span));
+    span.addEventListener("input", () => {
+        const changed = ensureNonLucyPlaceholder(span);
+        if (changed) {
+            focusBlockCaret(span, !isBlank(span));
+        }
+        syncEmptyAttr(span);
+    });
     span.addEventListener("keydown", (e) => {
         if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
         const writer = getCurrentWriter();
@@ -642,6 +694,34 @@ function resolveClickOffset(foreignSpan, clientX, clientY) {
     return offset;
 }
 
+/**
+ * Snap a commentary insert offset to a word boundary so existing words are
+ * never split. If already at an edge or next to whitespace, keep as-is;
+ * otherwise move to the nearer whitespace (or string edge). Ties prefer right.
+ *
+ * @param {string} text
+ * @param {number} offset
+ * @returns {number}
+ */
+function snapOffsetToWordBoundary(text, offset) {
+    const len = text.length;
+    let o = Math.max(0, Math.min(offset, len));
+    if (o <= 0 || o >= len) return o;
+
+    const left = text[o - 1];
+    const right = text[o];
+    if (/\s/.test(left) || /\s/.test(right)) return o;
+
+    let leftBound = o;
+    while (leftBound > 0 && !/\s/.test(text[leftBound - 1])) leftBound -= 1;
+
+    let rightBound = o;
+    while (rightBound < len && !/\s/.test(text[rightBound])) rightBound += 1;
+
+    if (o - leftBound <= rightBound - o) return leftBound;
+    return rightBound;
+}
+
 /* ---------------------------------------------------------- */
 /* -- Insert own / commentary blocks                       -- */
 /* ---------------------------------------------------------- */
@@ -721,7 +801,8 @@ function insertOwnBlockBefore(beforeSpan, writer) {
  */
 function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
     const text = foreignSpan.textContent ?? "";
-    const offset = resolveClickOffset(foreignSpan, clientX, clientY);
+    let offset = resolveClickOffset(foreignSpan, clientX, clientY);
+    offset = snapOffsetToWordBoundary(text, offset);
     const before = text.slice(0, offset);
     const after = text.slice(offset);
     const next = blockSibling(foreignSpan, "next");
@@ -759,8 +840,9 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
         return;
     }
 
-    // Mid-split: keep before in original, insert own, then after as new foreign continuation
-    foreignSpan.textContent = before;
+    // Mid-split: keep before in original, insert own, then after as new foreign continuation.
+    // Edge-trim halves so live spacing matches the saved (edge-trimmed) body contract.
+    foreignSpan.textContent = before.trimEnd();
     const midRank = generateKeyBetween(baseRank, afterRank);
     const afterOwnRank = generateKeyBetween(midRank, afterRank);
     const formatMode = getFormatMode();
@@ -782,7 +864,7 @@ function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
     continuation.dataset.sortRank = afterOwnRank;
     continuation.dataset.splitContinuation = "1";
     continuation.contentEditable = "false";
-    continuation.textContent = after;
+    continuation.textContent = after.trimStart();
     setVoiceName(continuation, foreignSpan.dataset.voiceName);
     continuation.style.setProperty(
         "--writer-color",
@@ -1062,7 +1144,7 @@ function gatherBlocksFromDom(container) {
             continue;
         }
 
-        const body = (node.textContent ?? "").trim();
+        const body = stripZwsp(node.textContent ?? "").trim();
         if (!body && !node.dataset.blockId) continue;
 
         const sortRank =
@@ -1362,6 +1444,26 @@ function voiceClassFromEl(el) {
 }
 
 /**
+ * Read per-writer handwriting vars from inline styles (set by applyHandwritingStyle).
+ * Font is stored as `"Family Name", Helvetica, sans-serif`.
+ * @param {HTMLElement} el
+ * @returns {{ writerHandwritingColor?: string, writerHandwritingFont?: string }}
+ */
+function handwritingFromEl(el) {
+    const color = el.style.getPropertyValue("--writer-color").trim();
+    const rawFont = el.style.getPropertyValue("--writer-font").trim();
+    let font = "";
+    if (rawFont) {
+        const quoted = rawFont.match(/^"([^"]+)"/);
+        font = quoted ? quoted[1] : (rawFont.split(",")[0] || "").trim();
+    }
+    return {
+        writerHandwritingColor: color || undefined,
+        writerHandwritingFont: font || undefined,
+    };
+}
+
+/**
  * Snapshot entry blocks from the DOM for re-render (includes voice CSS class).
  * Unlike gatherBlocksFromDom, keeps raw textContent (no trim) so mode toggles
  * don't reshape whitespace mid-edit.
@@ -1383,6 +1485,7 @@ function snapshotBlocksFromDom(container) {
             sortRank: node.dataset.sortRank,
             writerCssClass: voiceClassFromEl(node),
             writerDisplayName: node.dataset.voiceName || undefined,
+            ...handwritingFromEl(node),
         });
     }
     return blocks;
