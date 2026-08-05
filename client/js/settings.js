@@ -13,7 +13,7 @@ import {
 import { applyHandwritingStyle, ensureGoogleFont } from "./fonts.js";
 
 const DEFAULT_COLORS = {
-    "voice-lucy": "#6a2218",
+    "voice-lucy": "#333333",
     "voice-nemah": "#7a3d62",
     "voice-luark": "#4a4570",
     "voice-enza": "#2a5f72",
@@ -32,9 +32,9 @@ const PREVIEW_SNIPPETS = [
     { slug: "lucy", text: "about the world around our heroes." },
     { slug: "enza", text: "Wait, whose heroes?" },
     { slug: "lucy", text: "Use this as a pre-view", startsParagraph: true },
-    { slug: "luark", text: "It's just spelled preview, no hyphen" },
+    { slug: "luark", text: "It's just spelled preview. No hyphen." },
     { slug: "lucy", text: "of what your handwriting" },
-    { slug: "dm", text: "(or the DM equivalent)" },
+    { slug: "dm", text: "or the DM equivalent" },
     { slug: "lucy", text: "looks like alongside everyone else's." },
 ];
 
@@ -215,6 +215,9 @@ function renderHandwritingPreview() {
     const draft = currentFormHandwriting();
     preview.innerHTML = "";
 
+    /** @type {HTMLElement[]} */
+    const blocks = [];
+
     for (let i = 0; i < PREVIEW_SNIPPETS.length; i++) {
         const snippet = PREVIEW_SNIPPETS[i];
         const writer = allWriters.find((w) => w.slug === snippet.slug);
@@ -231,6 +234,7 @@ function renderHandwritingPreview() {
 
         const span = document.createElement("span");
         span.className = `entry-block ${writer.cssClass} stylized`;
+        span.dataset.writerId = writer.id;
         span.textContent = snippet.text;
 
         if (writer.id === me.id) {
@@ -243,6 +247,21 @@ function renderHandwritingPreview() {
             );
         }
         preview.appendChild(span);
+        blocks.push(span);
+    }
+
+    // Match travelogue: CSS <> chrome on contiguous non-Lucy voice runs
+    for (let i = 0; i < blocks.length; i++) {
+        const block = blocks[i];
+        if (block.classList.contains("voice-lucy")) continue;
+        const prev = blocks[i - 1];
+        const next = blocks[i + 1];
+        if (!prev || prev.dataset.writerId !== block.dataset.writerId) {
+            block.classList.add("voice-run-open");
+        }
+        if (!next || next.dataset.writerId !== block.dataset.writerId) {
+            block.classList.add("voice-run-close");
+        }
     }
 
     if (draft.font) ensureGoogleFont(draft.font);

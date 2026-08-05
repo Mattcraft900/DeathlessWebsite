@@ -188,21 +188,22 @@ function createParaBreak() {
 }
 
 /**
- * Mark open/close of contiguous non-Lucy voice runs for Simple-mode brackets.
+ * Mark open/close of contiguous non-Lucy voice runs for angle-bracket chrome
+ * (stylized `<…>` and Simple `<NAME: …>`). CSS-only; not in textContent / saves.
  * @param {HTMLElement[]} blocks
  */
-function refreshSimpleVoiceLabels(blocks) {
+function refreshVoiceRunMarkers(blocks) {
     for (let i = 0; i < blocks.length; i++) {
         const block = blocks[i];
-        block.classList.remove("simple-voice-open", "simple-voice-close");
+        block.classList.remove("voice-run-open", "voice-run-close");
         if (block.classList.contains("voice-lucy")) continue;
         const prev = blocks[i - 1];
         const next = blocks[i + 1];
         if (!prev || prev.dataset.writerId !== block.dataset.writerId) {
-            block.classList.add("simple-voice-open");
+            block.classList.add("voice-run-open");
         }
         if (!next || next.dataset.writerId !== block.dataset.writerId) {
-            block.classList.add("simple-voice-close");
+            block.classList.add("voice-run-close");
         }
     }
 }
@@ -237,7 +238,7 @@ function refreshBlockSeparators(container) {
         }
         container.appendChild(blocks[i]);
     }
-    refreshSimpleVoiceLabels(blocks);
+    refreshVoiceRunMarkers(blocks);
 }
 
 /** Editable block created this session — not yet persisted (no server id). */
