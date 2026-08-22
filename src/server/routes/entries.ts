@@ -3,9 +3,11 @@
  * PUT /:id/blocks is optimistic concurrency: client sends expected `version`;
  * mismatch → 409 with fresh `{ entry }` so the client can 3-way merge and retry.
  *
- * Non-admins may only edit/delete their own blocks, except the mid-split
- * commentary case: shortening a foreign block to a prefix/suffix and inserting
- * a same-author continuation (no id) in the same payload.
+ * Non-admins may only edit/delete their own blocks, except:
+ * - mid-split commentary: shortening a foreign block to a prefix/suffix and
+ *   inserting a same-author continuation (no id) in the same payload;
+ * - layout-only: flipping `startsParagraph` on a foreign block whose body and
+ *   writerId are unchanged (e.g. Enter at end of your text before their block).
  * Bodies are trimmed on write; `startsParagraph` is stored per block.
  */
 import { Router } from "express";
@@ -178,13 +180,22 @@ entriesRouter.put("/:id/blocks", requireWriter, async (req: AuthedRequest, res, 
                 const startsParagraph = Boolean(block.startsParagraph);
                 if (block.id && existingById.has(block.id)) {
                     const prev = existingById.get(block.id)!;
-                    const canEditMeta = isAdmin || prev.writerId === writer.id;
+                    const ownsBlock = isAdmin || prev.writerId === writer.id;
+                    // Paragraph breaks are layout between blocks: allow flipping the
+                    // flag on a foreign block when its text/authorship stay the same.
+                    const layoutOnlyForeign =
+                        !ownsBlock &&
+                        prev.body === body &&
+                        block.writerId === prev.writerId;
+                    const applyStartsParagraph = ownsBlock || layoutOnlyForeign;
                     await tx
                         .update(blocks)
                         .set({
                             body,
                             sortRank: block.sortRank,
-                            startsParagraph: canEditMeta ? startsParagraph : prev.startsParagraph,
+                            startsParagraph: applyStartsParagraph
+                                ? startsParagraph
+                                : prev.startsParagraph,
                             writerId: isAdmin ? block.writerId : prev.writerId,
                             updatedAt: new Date(),
                         })

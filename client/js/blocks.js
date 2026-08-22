@@ -29,6 +29,7 @@
 import { generateKeyBetween } from "fractional-indexing";
 import { apiPut } from "./api.js";
 import { getCurrentWriter } from "./auth-ui.js";
+import { holdScrollDuring } from "./edit-scroll.js";
 import { applyHandwritingStyle } from "./fonts.js";
 
 /* ---------------------------------------------------------- */
@@ -41,6 +42,32 @@ function getFormatMode() {
         document.getElementById("format-dropdown") ||
         document.getElementById("format-dropdown-inline");
     return dropdown?.value === "simple" ? "simple" : "stylized";
+}
+
+/* ---------------------------------------------------------- */
+/* -- Mobile insert gesture guards                         -- */
+/* ---------------------------------------------------------- */
+
+/** @type {number} */
+let ghostClickSuppressedUntil = 0;
+let ghostClickShieldWired = false;
+
+/**
+ * Block the browser's delayed click after pointerup+scroll so it can't hit
+ * format controls / Jump To that slid under the finger (ghost click).
+ * @param {number} [ms=400]
+ */
+function armGhostClickSuppression(ms = 400) {
+    ghostClickSuppressedUntil = performance.now() + ms;
+    if (ghostClickShieldWired) return;
+    ghostClickShieldWired = true;
+    const block = (e) => {
+        if (performance.now() >= ghostClickSuppressedUntil) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+    };
+    document.addEventListener("click", block, true);
+    document.addEventListener("auxclick", block, true);
 }
 
 /* ---------------------------------------------------------- */
@@ -176,7 +203,7 @@ function setVoiceName(span, displayName) {
     else delete span.dataset.voiceName;
 }
 
-/** @returns {HTMLSpanElement} zero-height break between paragraphs */
+/** @returns {HTMLSpanElement} paragraph-gap marker between voice blocks */
 function createParaBreak() {
     const el = document.createElement("span");
     el.className = "entry-para-break";
@@ -397,41 +424,43 @@ function discardIfEmpty(span) {
         return;
     }
 
-    const container = span.parentElement;
-    const prev = blockSibling(span, "prev");
-    const next = blockSibling(span, "next");
-    span.dataset.discarded = "1";
-    if (
-        prev &&
-        next &&
-        prev.dataset.writerId &&
-        isUnsavedContinuation(next, prev.dataset.writerId)
-    ) {
-        const left = prev.textContent ?? "";
-        const right = next.textContent ?? "";
-        const leftVis = stripZwsp(left);
-        const rightVis = stripZwsp(right);
-        const needSpace =
-            leftVis.length > 0 &&
-            rightVis.length > 0 &&
-            !/\s$/.test(leftVis) &&
-            !/^\s/.test(rightVis);
-        prev.textContent = needSpace ? `${left} ${right}` : `${left}${right}`;
-        next.remove();
-        span.remove();
-        refreshBlockSeparators(container);
-        return;
-    }
+    holdScrollDuring(() => {
+        const container = span.parentElement;
+        const prev = blockSibling(span, "prev");
+        const next = blockSibling(span, "next");
+        span.dataset.discarded = "1";
+        if (
+            prev &&
+            next &&
+            prev.dataset.writerId &&
+            isUnsavedContinuation(next, prev.dataset.writerId)
+        ) {
+            const left = prev.textContent ?? "";
+            const right = next.textContent ?? "";
+            const leftVis = stripZwsp(left);
+            const rightVis = stripZwsp(right);
+            const needSpace =
+                leftVis.length > 0 &&
+                rightVis.length > 0 &&
+                !/\s$/.test(leftVis) &&
+                !/^\s/.test(rightVis);
+            prev.textContent = needSpace ? `${left} ${right}` : `${left}${right}`;
+            next.remove();
+            span.remove();
+            refreshBlockSeparators(container);
+            return;
+        }
 
-    const wasFirst = !prev;
-    span.remove();
-    // If we removed the first block of the entry, the new first shouldn't keep
-    // a stale "starts paragraph" from being the old second block's flag alone —
-    // first block of the whole entry is never a "break after previous".
-    if (wasFirst && next) {
-        setStartsParagraph(next, false);
-    }
-    refreshBlockSeparators(container);
+        const wasFirst = !prev;
+        span.remove();
+        // If we removed the first block of the entry, the new first shouldn't keep
+        // a stale "starts paragraph" from being the old second block's flag alone —
+        // first block of the whole entry is never a "break after previous".
+        if (wasFirst && next) {
+            setStartsParagraph(next, false);
+        }
+        refreshBlockSeparators(container);
+    });
 }
 
 /**
@@ -596,15 +625,42 @@ function wireOwnEditable(span) {
     // Empty remainder of the last line before a paragraph break often hits the
     // editable span itself (especially admin/Lucy). Treat that as "caret at end"
     // instead of letting the browser put the caret at the start of the next para.
+    // On mobile, always preventDefault so the browser doesn't scroll-into-view;
+    // we place the caret ourselves with preventScroll (same as inserts).
     span.addEventListener("pointerdown", (e) => {
         if (e.button != null && e.button !== 0) return;
+
         const next = blockSibling(span, "next");
-        if (!next || !readStartsParagraph(next)) return;
-        const last = blockEdgeAnchors(span).end.rect;
-        if (e.clientY < last.top - 2 || e.clientY > last.bottom + 2) return;
-        if (e.clientX <= last.right) return;
+        const last = next && readStartsParagraph(next) ? blockEdgeAnchors(span).end.rect : null;
+        const tapPastLastLineEnd =
+            last &&
+            e.clientY >= last.top - 2 &&
+            e.clientY <= last.bottom + 2 &&
+            e.clientX > last.right;
+
+        const mobile = window.matchMedia("(max-width: 899px)").matches;
+        if (!mobile) {
+            if (!tapPastLastLineEnd) return;
+            e.preventDefault();
+            focusBlockCaret(span, true);
+            return;
+        }
+
         e.preventDefault();
-        focusBlockCaret(span, true);
+        if (tapPastLastLineEnd) {
+            focusBlockCaret(span, true);
+            return;
+        }
+
+        const text = span.textContent ?? "";
+        const offset = Math.max(
+            0,
+            Math.min(offsetFromPointInSpan(span, e.clientX, e.clientY), text.length),
+        );
+        span.focus({ preventScroll: true });
+        const place = () => placeCaretAtOffset(span, offset);
+        place();
+        requestAnimationFrame(place);
     });
     span.addEventListener("blur", () => {
         setTimeout(() => {
@@ -638,6 +694,7 @@ function wireForeignCommentary(span, writer) {
         if (activePointer !== e.pointerId) return;
         activePointer = null;
         e.stopPropagation();
+        armGhostClickSuppression();
         insertCommentaryAtPoint(span, writer, e.clientX, e.clientY);
     });
     // Swallow click so container padding handler doesn't also fire after pointerup.
@@ -817,33 +874,35 @@ function snapOffsetToWordBoundary(text, offset) {
  * @param {object} writer
  */
 function insertOwnBlockAfter(afterSpan, writer) {
-    const container = afterSpan.parentElement;
-    const next = blockSibling(afterSpan, "next");
-    if (isOwnEditableBlock(next, writer)) {
-        discardOtherEmptyOwnBlocks(container, writer, next);
-        focusBlockCaret(next, false);
-        return;
-    }
+    holdScrollDuring(() => {
+        const container = afterSpan.parentElement;
+        const next = blockSibling(afterSpan, "next");
+        if (isOwnEditableBlock(next, writer)) {
+            discardOtherEmptyOwnBlocks(container, writer, next);
+            focusBlockCaret(next, false);
+            return;
+        }
 
-    discardOtherEmptyOwnBlocks(container, writer);
+        discardOtherEmptyOwnBlocks(container, writer);
 
-    const formatMode = getFormatMode();
-    const span = document.createElement("span");
-    span.className = `entry-block ${writer.cssClass} ${formatMode}`;
-    span.dataset.writerId = writer.id;
-    span.dataset.sortRank = generateKeyBetween(
-        afterSpan.dataset.sortRank ?? null,
-        blockSibling(afterSpan, "next")?.dataset.sortRank ?? null,
-    );
-    span.contentEditable = "true";
-    span.textContent = "";
-    setVoiceName(span, writer.displayName);
-    applyHandwritingStyle(span, writer.handwritingColor, writer.handwritingFont);
-    setStartsParagraph(span, false);
-    wireOwnEditable(span);
-    afterSpan.after(span);
-    refreshBlockSeparators(afterSpan.parentElement);
-    focusBlockCaret(span, false);
+        const formatMode = getFormatMode();
+        const span = document.createElement("span");
+        span.className = `entry-block ${writer.cssClass} ${formatMode}`;
+        span.dataset.writerId = writer.id;
+        span.dataset.sortRank = generateKeyBetween(
+            afterSpan.dataset.sortRank ?? null,
+            blockSibling(afterSpan, "next")?.dataset.sortRank ?? null,
+        );
+        span.contentEditable = "true";
+        span.textContent = "";
+        setVoiceName(span, writer.displayName);
+        applyHandwritingStyle(span, writer.handwritingColor, writer.handwritingFont);
+        setStartsParagraph(span, false);
+        wireOwnEditable(span);
+        afterSpan.after(span);
+        refreshBlockSeparators(afterSpan.parentElement);
+        focusBlockCaret(span, false);
+    });
 }
 
 /**
@@ -852,33 +911,35 @@ function insertOwnBlockAfter(afterSpan, writer) {
  * @param {object} writer
  */
 function insertOwnBlockBefore(beforeSpan, writer) {
-    const container = beforeSpan.parentElement;
-    const prev = blockSibling(beforeSpan, "prev");
-    if (isOwnEditableBlock(prev, writer)) {
-        discardOtherEmptyOwnBlocks(container, writer, prev);
-        focusBlockCaret(prev, true);
-        return;
-    }
+    holdScrollDuring(() => {
+        const container = beforeSpan.parentElement;
+        const prev = blockSibling(beforeSpan, "prev");
+        if (isOwnEditableBlock(prev, writer)) {
+            discardOtherEmptyOwnBlocks(container, writer, prev);
+            focusBlockCaret(prev, true);
+            return;
+        }
 
-    discardOtherEmptyOwnBlocks(container, writer);
+        discardOtherEmptyOwnBlocks(container, writer);
 
-    const formatMode = getFormatMode();
-    const span = document.createElement("span");
-    span.className = `entry-block ${writer.cssClass} ${formatMode}`;
-    span.dataset.writerId = writer.id;
-    span.dataset.sortRank = generateKeyBetween(
-        blockSibling(beforeSpan, "prev")?.dataset.sortRank ?? null,
-        beforeSpan.dataset.sortRank ?? null,
-    );
-    span.contentEditable = "true";
-    span.textContent = "";
-    setVoiceName(span, writer.displayName);
-    applyHandwritingStyle(span, writer.handwritingColor, writer.handwritingFont);
-    setStartsParagraph(span, false);
-    wireOwnEditable(span);
-    beforeSpan.before(span);
-    refreshBlockSeparators(beforeSpan.parentElement);
-    focusBlockCaret(span, false);
+        const formatMode = getFormatMode();
+        const span = document.createElement("span");
+        span.className = `entry-block ${writer.cssClass} ${formatMode}`;
+        span.dataset.writerId = writer.id;
+        span.dataset.sortRank = generateKeyBetween(
+            blockSibling(beforeSpan, "prev")?.dataset.sortRank ?? null,
+            beforeSpan.dataset.sortRank ?? null,
+        );
+        span.contentEditable = "true";
+        span.textContent = "";
+        setVoiceName(span, writer.displayName);
+        applyHandwritingStyle(span, writer.handwritingColor, writer.handwritingFont);
+        setStartsParagraph(span, false);
+        wireOwnEditable(span);
+        beforeSpan.before(span);
+        refreshBlockSeparators(beforeSpan.parentElement);
+        focusBlockCaret(span, false);
+    });
 }
 
 /**
@@ -893,114 +954,116 @@ function insertOwnBlockBefore(beforeSpan, writer) {
  * @param {number} clientY
  */
 function insertCommentaryAtPoint(foreignSpan, writer, clientX, clientY) {
-    const container = foreignSpan.parentElement;
-    discardOtherEmptyOwnBlocks(container, writer);
+    holdScrollDuring(() => {
+        const container = foreignSpan.parentElement;
+        discardOtherEmptyOwnBlocks(container, writer);
 
-    // Sync discard may rejoin a mid-split and remove a continuation under the tap.
-    let target = foreignSpan;
-    if (!target.isConnected && container) {
-        target =
-            entryBlocksInOrder(container).find((b) => {
-                const r = b.getBoundingClientRect();
-                return (
-                    clientX >= r.left &&
-                    clientX <= r.right &&
-                    clientY >= r.top &&
-                    clientY <= r.bottom
-                );
-            }) ?? null;
-        if (!target) return;
-        if (isOwnEditableBlock(target, writer)) {
-            focusBlockCaret(target, false);
+        // Sync discard may rejoin a mid-split and remove a continuation under the tap.
+        let target = foreignSpan;
+        if (!target.isConnected && container) {
+            target =
+                entryBlocksInOrder(container).find((b) => {
+                    const r = b.getBoundingClientRect();
+                    return (
+                        clientX >= r.left &&
+                        clientX <= r.right &&
+                        clientY >= r.top &&
+                        clientY <= r.bottom
+                    );
+                }) ?? null;
+            if (!target) return;
+            if (isOwnEditableBlock(target, writer)) {
+                focusBlockCaret(target, false);
+                return;
+            }
+        }
+
+        const text = target.textContent ?? "";
+        let offset = resolveClickOffset(target, clientX, clientY);
+        offset = snapOffsetToWordBoundary(text, offset);
+        const before = text.slice(0, offset);
+        const after = text.slice(offset);
+        const next = blockSibling(target, "next");
+        const baseRank = target.dataset.sortRank ?? null;
+        const afterRank = next?.dataset.sortRank ?? null;
+
+        // Edge click next to an existing own block → edit that block, don't insert again.
+        if (!before.trim()) {
+            const prev = blockSibling(target, "prev");
+            if (isOwnEditableBlock(prev, writer)) {
+                focusBlockCaret(prev, true);
+                return;
+            }
+        }
+        if (!after.trim()) {
+            if (isOwnEditableBlock(next, writer)) {
+                focusBlockCaret(next, false);
+                return;
+            }
+        }
+
+        if (!before.trim() && !after.trim()) {
+            insertOwnBlockAfter(target, writer);
             return;
         }
-    }
 
-    const text = target.textContent ?? "";
-    let offset = resolveClickOffset(target, clientX, clientY);
-    offset = snapOffsetToWordBoundary(text, offset);
-    const before = text.slice(0, offset);
-    const after = text.slice(offset);
-    const next = blockSibling(target, "next");
-    const baseRank = target.dataset.sortRank ?? null;
-    const afterRank = next?.dataset.sortRank ?? null;
-
-    // Edge click next to an existing own block → edit that block, don't insert again.
-    if (!before.trim()) {
-        const prev = blockSibling(target, "prev");
-        if (isOwnEditableBlock(prev, writer)) {
-            focusBlockCaret(prev, true);
+        if (!before.trim()) {
+            insertOwnBlockBefore(target, writer);
             return;
         }
-    }
-    if (!after.trim()) {
-        if (isOwnEditableBlock(next, writer)) {
-            focusBlockCaret(next, false);
+
+        if (!after.trim()) {
+            insertOwnBlockAfter(target, writer);
             return;
         }
-    }
 
-    if (!before.trim() && !after.trim()) {
-        insertOwnBlockAfter(target, writer);
-        return;
-    }
+        // Mid-split: keep before in original, insert own, then after as new foreign continuation.
+        // Edge-trim halves so live spacing matches the saved (edge-trimmed) body contract.
+        target.textContent = before.trimEnd();
+        const midRank = generateKeyBetween(baseRank, afterRank);
+        const afterOwnRank = generateKeyBetween(midRank, afterRank);
+        const formatMode = getFormatMode();
 
-    if (!before.trim()) {
-        insertOwnBlockBefore(target, writer);
-        return;
-    }
+        const own = document.createElement("span");
+        own.className = `entry-block ${writer.cssClass} ${formatMode}`;
+        own.dataset.writerId = writer.id;
+        own.dataset.sortRank = midRank;
+        own.contentEditable = "true";
+        own.textContent = "";
+        setVoiceName(own, writer.displayName);
+        applyHandwritingStyle(own, writer.handwritingColor, writer.handwritingFont);
+        setStartsParagraph(own, false);
+        wireOwnEditable(own);
 
-    if (!after.trim()) {
-        insertOwnBlockAfter(target, writer);
-        return;
-    }
+        const continuation = document.createElement("span");
+        continuation.className = target.className;
+        continuation.dataset.writerId = target.dataset.writerId;
+        continuation.dataset.sortRank = afterOwnRank;
+        continuation.dataset.splitContinuation = "1";
+        continuation.contentEditable = "false";
+        continuation.textContent = after.trimStart();
+        setVoiceName(continuation, target.dataset.voiceName);
+        continuation.style.setProperty(
+            "--writer-color",
+            target.style.getPropertyValue("--writer-color"),
+        );
+        continuation.style.setProperty(
+            "--writer-font",
+            target.style.getPropertyValue("--writer-font"),
+        );
+        if (!continuation.style.getPropertyValue("--writer-color")) {
+            continuation.style.removeProperty("--writer-color");
+        }
+        if (!continuation.style.getPropertyValue("--writer-font")) {
+            continuation.style.removeProperty("--writer-font");
+        }
+        setStartsParagraph(continuation, false);
+        wireForeignCommentary(continuation, writer);
 
-    // Mid-split: keep before in original, insert own, then after as new foreign continuation.
-    // Edge-trim halves so live spacing matches the saved (edge-trimmed) body contract.
-    target.textContent = before.trimEnd();
-    const midRank = generateKeyBetween(baseRank, afterRank);
-    const afterOwnRank = generateKeyBetween(midRank, afterRank);
-    const formatMode = getFormatMode();
-
-    const own = document.createElement("span");
-    own.className = `entry-block ${writer.cssClass} ${formatMode}`;
-    own.dataset.writerId = writer.id;
-    own.dataset.sortRank = midRank;
-    own.contentEditable = "true";
-    own.textContent = "";
-    setVoiceName(own, writer.displayName);
-    applyHandwritingStyle(own, writer.handwritingColor, writer.handwritingFont);
-    setStartsParagraph(own, false);
-    wireOwnEditable(own);
-
-    const continuation = document.createElement("span");
-    continuation.className = target.className;
-    continuation.dataset.writerId = target.dataset.writerId;
-    continuation.dataset.sortRank = afterOwnRank;
-    continuation.dataset.splitContinuation = "1";
-    continuation.contentEditable = "false";
-    continuation.textContent = after.trimStart();
-    setVoiceName(continuation, target.dataset.voiceName);
-    continuation.style.setProperty(
-        "--writer-color",
-        target.style.getPropertyValue("--writer-color"),
-    );
-    continuation.style.setProperty(
-        "--writer-font",
-        target.style.getPropertyValue("--writer-font"),
-    );
-    if (!continuation.style.getPropertyValue("--writer-color")) {
-        continuation.style.removeProperty("--writer-color");
-    }
-    if (!continuation.style.getPropertyValue("--writer-font")) {
-        continuation.style.removeProperty("--writer-font");
-    }
-    setStartsParagraph(continuation, false);
-    wireForeignCommentary(continuation, writer);
-
-    target.after(own, continuation);
-    refreshBlockSeparators(container);
-    focusBlockCaret(own, false);
+        target.after(own, continuation);
+        refreshBlockSeparators(container);
+        focusBlockCaret(own, false);
+    });
 }
 
 /* ---------------------------------------------------------- */
@@ -1059,12 +1122,18 @@ function pointInGlyphBoxes(el, x, y) {
  */
 function placeAtBlockEnd(above, writer) {
     if (above.isContentEditable) {
-        focusBlockCaret(above, true);
+        holdScrollDuring(() => {
+            discardOtherEmptyOwnBlocks(above.parentElement, writer, above);
+            focusBlockCaret(above, true);
+        });
         return;
     }
     const next = blockSibling(above, "next");
     if (isOwnEditableBlock(next, writer)) {
-        focusBlockCaret(next, false);
+        holdScrollDuring(() => {
+            discardOtherEmptyOwnBlocks(above.parentElement, writer, next);
+            focusBlockCaret(next, false);
+        });
         return;
     }
     insertOwnBlockAfter(above, writer);
@@ -1174,7 +1243,10 @@ function handleContainerClick(container, writer, clientX, clientY) {
     if (!best) return;
 
     if (best.block.isContentEditable) {
-        focusBlockCaret(best.block, best.atEnd);
+        holdScrollDuring(() => {
+            discardOtherEmptyOwnBlocks(container, writer, best.block);
+            focusBlockCaret(best.block, best.atEnd);
+        });
         return;
     }
 
@@ -1182,7 +1254,10 @@ function handleContainerClick(container, writer, clientX, clientY) {
     if (best.atEnd) {
         const next = blockSibling(best.block, "next");
         if (isOwnEditableBlock(next, writer)) {
-            focusBlockCaret(next, false);
+            holdScrollDuring(() => {
+                discardOtherEmptyOwnBlocks(container, writer, next);
+                focusBlockCaret(next, false);
+            });
             return;
         }
         insertOwnBlockAfter(best.block, writer);
@@ -1191,7 +1266,10 @@ function handleContainerClick(container, writer, clientX, clientY) {
 
     const prev = blockSibling(best.block, "prev");
     if (isOwnEditableBlock(prev, writer)) {
-        focusBlockCaret(prev, true);
+        holdScrollDuring(() => {
+            discardOtherEmptyOwnBlocks(container, writer, prev);
+            focusBlockCaret(prev, true);
+        });
         return;
     }
     insertOwnBlockBefore(best.block, writer);
@@ -1203,30 +1281,32 @@ function handleContainerClick(container, writer, clientX, clientY) {
  * @param {object} writer
  */
 function insertOwnBlockAtEnd(container, writer) {
-    const blocks = entryBlocksInOrder(container);
-    const last = blocks[blocks.length - 1] ?? null;
-    if (isOwnEditableBlock(last, writer)) {
-        discardOtherEmptyOwnBlocks(container, writer, last);
-        focusBlockCaret(last, true);
-        return;
-    }
+    holdScrollDuring(() => {
+        const blocks = entryBlocksInOrder(container);
+        const last = blocks[blocks.length - 1] ?? null;
+        if (isOwnEditableBlock(last, writer)) {
+            discardOtherEmptyOwnBlocks(container, writer, last);
+            focusBlockCaret(last, true);
+            return;
+        }
 
-    discardOtherEmptyOwnBlocks(container, writer);
+        discardOtherEmptyOwnBlocks(container, writer);
 
-    const formatMode = getFormatMode();
-    const span = document.createElement("span");
-    span.className = `entry-block ${writer.cssClass} ${formatMode}`;
-    span.dataset.writerId = writer.id;
-    span.dataset.sortRank = generateKeyBetween(last?.dataset.sortRank ?? null, null);
-    span.contentEditable = "true";
-    span.textContent = "";
-    setVoiceName(span, writer.displayName);
-    applyHandwritingStyle(span, writer.handwritingColor, writer.handwritingFont);
-    setStartsParagraph(span, blocks.length > 0);
-    wireOwnEditable(span);
-    container.appendChild(span);
-    refreshBlockSeparators(container);
-    focusBlockCaret(span, false);
+        const formatMode = getFormatMode();
+        const span = document.createElement("span");
+        span.className = `entry-block ${writer.cssClass} ${formatMode}`;
+        span.dataset.writerId = writer.id;
+        span.dataset.sortRank = generateKeyBetween(last?.dataset.sortRank ?? null, null);
+        span.contentEditable = "true";
+        span.textContent = "";
+        setVoiceName(span, writer.displayName);
+        applyHandwritingStyle(span, writer.handwritingColor, writer.handwritingFont);
+        setStartsParagraph(span, blocks.length > 0);
+        wireOwnEditable(span);
+        container.appendChild(span);
+        refreshBlockSeparators(container);
+        focusBlockCaret(span, false);
+    });
 }
 
 /* ---------------------------------------------------------- */
@@ -1384,7 +1464,9 @@ function hasContinuationAfter(result, afterId, remainder, foreignWriterId) {
  * Steps (high level):
  * 1. Clone remote as result
  * 2. Drop ids this writer deleted locally (present in base, absent in local)
- * 3. Apply this writer's body/flag updates on own blocks; admin may update foreign too
+ * 3. Apply this writer's body/flag updates on own blocks; admin may update
+ *    foreign bodies too; anyone may flip foreign startsParagraph when body
+ *    is unchanged (layout-only promote)
  * 4. Apply compatible foreign shortens if remote still has the untouched base body
  * 5. Insert no-id runs from local, anchored after/before surviving ids; skip
  *    re-inserting a foreign continuation if remote already split the same place
@@ -1427,6 +1509,17 @@ function mergeBlocks(base, local, remote, writerId) {
                 target.body = b.body;
             }
             if (baseBlock && Boolean(b.startsParagraph) !== Boolean(baseBlock.startsParagraph)) {
+                target.startsParagraph = Boolean(b.startsParagraph);
+            }
+        } else {
+            // Layout-only: promote/demote paragraph break on a foreign block
+            // without changing its text (Enter at end of own voice before it).
+            const baseBlock = baseById.get(b.id);
+            if (
+                baseBlock &&
+                b.body === baseBlock.body &&
+                Boolean(b.startsParagraph) !== Boolean(baseBlock.startsParagraph)
+            ) {
                 target.startsParagraph = Boolean(b.startsParagraph);
             }
         }
