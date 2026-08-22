@@ -1,18 +1,56 @@
 # DeathlessWebsite
 
-Campaign log and character reference for the **Deathless** D&D home game in Mourne. Lucy’s travelogue (with Nemah’s bracketed asides) and party bios are stored in PostgreSQL and edited in-browser when logged in as a writer.
+Campaign log and character reference for the **Deathless** D&D home game in Mourne. Lucy’s travelogue (with Nemah’s bracketed asides) and party bios live in PostgreSQL and can be edited in-browser when logged in as a writer.
 
-## Prerequisites
+Built for the table: a shared place to read the campaign log, look up characters, and let each writer add their own voice without stepping on anyone else’s text.
 
-- Node.js 20+
-- PostgreSQL via one of:
-  - **Embedded Postgres** (no Docker): `npm run db:local` in a separate terminal
-  - **Docker Compose**: `docker compose up -d`
-  - **Neon** cloud connection string in `.env`
+**Live site:** [https://deathless.onrender.com](https://deathless.onrender.com)
 
-## Quick start (local)
+The app is hosted on Render’s free tier, which spins the service down after inactivity. The first visit after idle can take **15–60 seconds** while it wakes up; refreshes after that should be normal. More detail: [docs/DEPLOY.md](docs/DEPLOY.md).
 
-### Option A — Embedded Postgres (no Docker)
+## Features
+
+- **Travelogue** — Lucy’s session log with infinite scroll and jump-to navigation (including mobile)
+- **Multi-voice blocks** — Entries are ordered voice blocks; writers edit their own text and can insert commentary into others’ passages
+- **Characters** — Party gallery and per-character pages with editable bios
+- **Writer auth** — PIN login, signed httpOnly session cookie, change-PIN and per-writer font/color settings
+- **Edit chrome** — Floating edit controls tuned for desktop and mobile (including soft-keyboard behavior)
+- **Concurrent saves** — Versioned updates with conflict detection and client-side merge on conflict
+
+## Tech stack
+
+- **Server:** Express + TypeScript
+- **Client:** Vite multi-page app (HTML, CSS, JS)
+- **Database:** PostgreSQL via Drizzle ORM
+- **Auth:** Cookie sessions (PIN hashed with bcrypt)
+- **Deploy:** Neon + Render (see [docs/DEPLOY.md](docs/DEPLOY.md))
+
+## Pages
+
+| URL | Description |
+|-----|-------------|
+| `/` | Home — Welcome to Mourne, party gallery |
+| `/travelogue` | Lucy’s campaign log (infinite scroll) |
+| `/characters` | Character gallery |
+| `/characters/:slug` | Character detail + editable bio |
+
+## Project layout
+
+```
+client/          Vite MPA (HTML, CSS, JS)
+src/server/      Express API + auth
+src/db/          Drizzle schema & migrations
+scripts/         Database seed
+docs/            API & deploy guides
+```
+
+More detail: [systems overview](docs/systems-overview.md), [API map](docs/api-map.md).
+
+## Local development
+
+**Prerequisites:** Node.js 20+, and PostgreSQL via embedded Postgres, Docker Compose, or a Neon connection string.
+
+### Quick start (embedded Postgres)
 
 ```bash
 npm install
@@ -25,27 +63,17 @@ npm run db:setup
 npm run dev
 ```
 
-### Option B — Docker Postgres
-
-```bash
-docker compose up -d
-cp .env.example .env
-# DATABASE_URL=postgresql://deathless:deathless@localhost:5432/deathless
-
-npm install
-npm run db:setup
-npm run dev
-```
-
 Open **http://localhost:3000**
+
+Docker or Neon instead? See [docs/LOCAL-DATABASES.md](docs/LOCAL-DATABASES.md). Production deploy: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ### Default login
 
-After seeding, every writer uses the PIN from `SEED_DEFAULT_PIN` (default **`deathless`**). Log in via **Writing as…** in the header. Change your PIN after first login.
+After seeding, writers share the PIN from `SEED_DEFAULT_PIN` (default **`deathless`**). Log in via **Writing as…** in the header; change your PIN after first login.
 
 Writers: Lucy (admin), Nemah, Luark, Enza, Chesco, DM.
 
-## Scripts
+### Scripts
 
 | Command | Description |
 |---------|-------------|
@@ -56,99 +84,6 @@ Writers: Lucy (admin), Nemah, Luark, Enza, Chesco, DM.
 | `npm run db:seed` | Reset and seed writers, characters, travelogue |
 | `npm run db:setup` | Migrate + seed |
 
-## Pages
+## Roadmap
 
-| URL | Description |
-|-----|-------------|
-| `/` | Home — Welcome to Mourne, party gallery |
-| `/travelogue` | Lucy’s campaign log (infinite scroll) |
-| `/characters` | Character gallery |
-| `/characters/:slug` | Character detail + editable bio |
-
-## Documentation
-
-- [Systems overview](docs/systems-overview.md) — pages, auth, voice-block editing, travelogue paging
-- [API map](docs/api-map.md) — REST endpoints
-- [Deploy](docs/DEPLOY.md) — Neon + Render
-- [Local databases](docs/LOCAL-DATABASES.md) — embedded vs Docker vs Neon, and how to test edits
-
-## Project layout
-
-```
-client/          Vite MPA (HTML, CSS, JS)
-src/server/      Express API + auth
-src/db/          Drizzle schema & migrations
-scripts/         Database seed
-docs/            API & deploy guides
-```
-
-## Remote database (Neon)
-
-Set `DATABASE_URL` to your Neon connection string (with `sslmode=require`), then:
-
-```bash
-npm run db:setup
-npm run dev
-```
-
-See [docs/DEPLOY.md](docs/DEPLOY.md) for production deployment on Render.
-
-
-## To-Do List Items
-
-
-### Bug Fixes 
-
-- [x] Fix multiple-user concurrency issues
-- [x] Fix weird insert block position bugs
-- [x] Standardize white space between voice blocks
-- [x] Margin disappears immediately on collapse Jump To menu (mobile)
-
-### Wanted for MVP
-
-- [x] Move the "Writing as" dropdown.
-- [x] Implement a route for players to change their PIN
-- [x] Restore old site layouts
-- [x] Test infinite scrolling/jump-to functions on the travelogue.
-    - [x] Implement jump-to menu(s) for mobile
-    - Will need to first generate tons of placeholder entries for the travelogue
-- [x] Refactor the logo as SVG + get favicon files
-- [x] Figure out a better method of "simplified" styles for six different voices. 
-    - Curently they're all just italicized except Lucy.
-    - Possibly use some kind of brackets with character name in caps &lt;LUARK: like this, for example&gt;.
-
-
-### Non-MVP
-
-- [ ] Touch up page intro blurbs
-- [ ] Rich-text/WYSIWYG editor while editing
-    - At least include functionality for bold/italics/strikethrough
-    - [ ] Include undo/redo buttons (primarily for mobile)
-- [ ] On a *new branch*, try out pagination instead of infinite scroll on the travelogue page
-- [ ] UX for adding new travelogue entries
-- [ ] UX for adding new characters
-- [x] UX for players to update their own font & color (same place as reset PIN?)
-- [ ] "Dirty warnings" on navigation or reload while in Edit mode
-- [ ] Allow players to edit/add their own character's stats on the character page
-
-#### Style
-
-- [x] Color palette overhaul
-- [x] Find a good subheading font
-- [x] Persistent header(s)
-    - [ ] Sticky headings for travelogue session entries & character list categories
-- [x] Box shadow around Deathless title
-- [x] Travelogue sidebars:
-    - remove/change coloring on format options section
-    - Center checkbox vertically for hiding session names
-    - Shrink/clamp text on right sidebar to remove the horizontal scroll
-    - Add top margin for both so they don't look so high compared to the travelogue content
-- [ ] Dark Mode
-
-- [ ] Code practices standardizations:
-    - [x] tab width from 2 -> 4
-    - [x] COMMENT BLOCKS PLEASE
-    - [x] Ensure aria tags are all appropriately assigned
-    - [x] reorganize/standardize class selectors, et. al. to provide for more consistent formatting across the whole site
-    - [ ] Get rid of dead code, streamline repetitive code
-    
+See [TODO.md](TODO.md) for planned work.
