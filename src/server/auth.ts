@@ -125,6 +125,19 @@ export function requireAdmin(req: AuthedRequest, res: Response, next: NextFuncti
     next();
 }
 
+/** Structural travelogue edits are Lucy's, not any future admin's. */
+export function requireLucy(req: AuthedRequest, res: Response, next: NextFunction) {
+    if (!req.writer) {
+        res.status(401).json({ error: "Login required" });
+        return;
+    }
+    if (req.writer.slug !== "lucy") {
+        res.status(403).json({ error: "Lucy only" });
+        return;
+    }
+    next();
+}
+
 export function publicWriter(writer: SessionWriter) {
     return {
         id: writer.id,

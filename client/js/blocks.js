@@ -1280,6 +1280,47 @@ function handleContainerClick(container, writer, clientX, clientY) {
  * @param {HTMLElement} container
  * @param {object} writer
  */
+/**
+ * Place the caret in a new empty own paragraph at the start or end of an entry.
+ * Used when Lucy starts writing under a new session or date heading.
+ * @param {HTMLElement} container
+ * @param {{ at?: "start"|"end" }} [options]
+ */
+/**
+ * Put the caret at the start of the first prose block, or create an empty one.
+ * @param {HTMLElement} container
+ */
+export function placeCaretAtProseStart(container) {
+    const writer = getCurrentWriter();
+    if (!writer || !container) return;
+    const first = entryBlocksInOrder(container)[0] ?? null;
+    if (first?.isContentEditable) {
+        focusBlockCaret(first, false);
+        return;
+    }
+    insertOwnBlockAtEnd(container, writer);
+}
+
+export function beginWritingInEntry(container, { at = "end" } = {}) {
+    const writer = getCurrentWriter();
+    if (!writer || !container) return;
+    if (at === "start") {
+        const first = entryBlocksInOrder(container)[0] ?? null;
+        if (first) {
+            insertOwnBlockBefore(first, writer);
+            const inserted = entryBlocksInOrder(container)[0];
+            if (inserted && inserted !== first && isBlank(inserted)) {
+                setStartsParagraph(inserted, true);
+                setStartsParagraph(first, true);
+                refreshBlockSeparators(container);
+                focusBlockCaret(inserted, false);
+            }
+            return;
+        }
+    }
+    insertOwnBlockAtEnd(container, writer);
+}
+
 function insertOwnBlockAtEnd(container, writer) {
     holdScrollDuring(() => {
         const blocks = entryBlocksInOrder(container);

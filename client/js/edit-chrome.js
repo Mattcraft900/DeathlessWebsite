@@ -106,11 +106,33 @@ function notifyEditModeChange() {
     syncSidebarEditButtons();
 }
 
+let captureHeadings = null;
+let saveHeadings = null;
+let discardHeadings = null;
+
+/**
+ * Travelogue heading edits are snapshotted with Edit mode and flushed on Save.
+ * @param {{ capture?: () => void, save?: () => Promise<boolean>, discard?: () => void }} handlers
+ */
+export function setHeadingEditHandlers(handlers) {
+    captureHeadings = handlers.capture ?? null;
+    saveHeadings = handlers.save ?? null;
+    discardHeadings = handlers.discard ?? null;
+}
+
 function enterEditMode() {
     if (editMode) return;
     editMode = true;
     setAllEntriesEditable(document, true);
     notifyEditModeChange();
+    captureHeadings?.();
+}
+
+/** Enter body Edit mode if a writer is signed in. No-op if already editing. */
+export function ensureEditMode() {
+    if (!getCurrentWriter()) return false;
+    enterEditMode();
+    return true;
 }
 
 /**
@@ -121,6 +143,7 @@ function exitEditMode({ discard = false } = {}) {
     if (!editMode) return;
     if (discard) {
         discardAllEntryBlocks(document);
+        discardHeadings?.();
     } else {
         setAllEntriesEditable(document, false);
     }
@@ -552,7 +575,9 @@ async function handleSave() {
     for (const b of saveBtns) b.disabled = true;
     try {
         const ok = await saveAllEntryBlocks(document);
-        if (ok) exitEditMode({ discard: false });
+        if (!ok) return;
+        if (saveHeadings && !(await saveHeadings())) return;
+        exitEditMode({ discard: false });
     } finally {
         for (const b of saveBtns) b.disabled = false;
         syncSidebarEditButtons();

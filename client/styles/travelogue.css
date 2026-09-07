@@ -245,8 +245,120 @@
 }
 
 .game-date-entry {
+    position: relative;
     margin-bottom: 1.5em;
     scroll-margin-top: 5.5rem;
+}
+
+.log-heading {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+}
+
+.log-heading .session-title,
+.log-heading .game-date-heading {
+    flex: 1 1 auto;
+    min-width: 0;
+    outline: none;
+}
+
+.log-heading:focus-within .session-title,
+.log-heading:focus-within .game-date-heading {
+    padding-right: 1.7em;
+}
+
+.log-heading-remove {
+    position: absolute;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    visibility: hidden;
+    box-sizing: border-box;
+    width: 1.5em;
+    height: 1.5em;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: color-mix(in srgb, var(--color-heading) 70%, transparent);
+    font: inherit;
+    font-size: 1.425em;
+    line-height: 1;
+    cursor: pointer;
+}
+
+/* Center on the heading text, not the margin box. Session titles have uneven margins. */
+.log-heading[data-kind="session"] .log-heading-remove {
+    top: calc(50% + 5px);
+    transform: translateY(-50%);
+}
+
+.log-heading[data-kind="date"] .log-heading-remove {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.log-heading:focus-within .log-heading-remove {
+    visibility: visible;
+}
+
+.log-heading-restore,
+.lucy-write-line,
+.insert-date-chip {
+    border: 0;
+    background: none;
+    color: color-mix(in srgb, var(--paragraph-color-on-white) 62%, transparent);
+    font-family: var(--paragraph-font);
+    cursor: pointer;
+}
+
+.log-heading-restore {
+    display: block;
+    margin: 0.6em 0;
+    padding: 0;
+    font-size: 0.85em;
+    font-style: italic;
+}
+
+.lucy-write-line {
+    display: block;
+    margin: 0.35em 0 1em;
+    padding: 0;
+    font-size: 1em;
+    font-style: italic;
+    text-align: left;
+}
+
+.insert-date-chip {
+    position: absolute;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28em;
+    margin: 0;
+    padding: 0;
+    font-size: 0.66em;
+    font-style: italic;
+    line-height: 1;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.insert-date-chip[hidden] {
+    display: none;
+}
+
+.insert-date-chip:hover,
+.insert-date-chip:focus-visible {
+    color: color-mix(in srgb, var(--paragraph-color-on-white) 78%, transparent);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    outline: none;
+}
+
+.add-session-btn {
+    display: none;
 }
 
 
@@ -557,6 +669,32 @@
 
     #format-sidebar .format-controls__options {
         margin-top: 1em;
+    }
+
+    body.edit-mode.is-lucy .add-session-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 72%;
+        align-self: center;
+        margin: 1.15em auto 0;
+        padding: 0.35em 0.7em;
+        border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+        border-radius: 8px;
+        background: transparent;
+        color: var(--color-heading);
+        font-family: var(--subheading-font);
+        font-size: 1em;
+        font-weight: 400;
+        letter-spacing: 0.06em;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    body.edit-mode.is-lucy .add-session-btn:hover,
+    body.edit-mode.is-lucy .add-session-btn:focus-visible {
+        background: color-mix(in srgb, var(--color-oxblood) 8%, transparent);
+        outline: none;
     }
 
     .entry-blocks {

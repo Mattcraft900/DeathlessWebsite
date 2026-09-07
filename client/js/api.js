@@ -45,6 +45,16 @@ export function apiPost(path, body) {
 }
 
 /** @param {string} path @param {object} body */
+export function apiPatch(path, body) {
+    return fetch(`${BASE}${path}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    }).then(handleResponse);
+}
+
+/** @param {string} path @param {object} body */
 export function apiPut(path, body) {
     return fetch(`${BASE}${path}`, {
         method: "PUT",

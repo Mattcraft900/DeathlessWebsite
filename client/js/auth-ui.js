@@ -347,6 +347,54 @@ export function showDiscardConfirmModal() {
     });
 }
 
+/**
+ * Confirm hiding a session title or in-game date. Prose is kept.
+ * Destructive action is filled; cancel is focused by default.
+ *
+ * @param {{ kind: "session"|"date" }} options
+ * @returns {Promise<boolean>} true if the heading should be removed
+ */
+export function showRemoveHeadingModal({ kind }) {
+    const noun = kind === "session" ? "session title" : "date";
+    return new Promise((resolve) => {
+        closeModal();
+        const backdrop = document.createElement("div");
+        backdrop.className = "auth-modal-backdrop";
+        backdrop.innerHTML = `
+            <div class="auth-modal auth-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="auth-remove-heading-title">
+                <h3 id="auth-remove-heading-title">Remove this ${noun}?</h3>
+                <p class="auth-confirm-message">
+                    The writing under it will stay.
+                </p>
+                <div class="auth-modal-actions auth-confirm-actions">
+                    <button type="button" class="auth-btn auth-btn-confirm-discard">Remove heading</button>
+                    <button type="button" class="auth-btn auth-btn-ghost">Keep</button>
+                </div>
+            </div>
+        `;
+
+        const finish = (remove) => {
+            closeModal();
+            resolve(remove);
+        };
+
+        backdrop.querySelector(".auth-btn-confirm-discard").addEventListener("click", () => {
+            finish(true);
+        });
+        backdrop.querySelector(".auth-btn-ghost").addEventListener("click", () => {
+            finish(false);
+        });
+        backdrop.addEventListener("click", (e) => {
+            if (e.target === backdrop) finish(false);
+        });
+
+        bindModalEscape(() => finish(false));
+
+        document.body.appendChild(backdrop);
+        backdrop.querySelector(".auth-btn-ghost")?.focus();
+    });
+}
+
 /* ---------------------------------------------------------- */
 /* -- Cookie session restore                               -- */
 /* ---------------------------------------------------------- */
