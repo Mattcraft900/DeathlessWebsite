@@ -38,6 +38,7 @@
 
 #format-sidebar .format-controls__options {
     justify-content: center;
+    flex-wrap: wrap;
 }
 
 /*
@@ -261,10 +262,7 @@
     flex: 1 1 auto;
     min-width: 0;
     outline: none;
-}
-
-.log-heading:focus-within .session-title,
-.log-heading:focus-within .game-date-heading {
+    /* Always reserve the × on touch; desktop hides it until focus. */
     padding-right: 1.7em;
 }
 
@@ -274,7 +272,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    visibility: hidden;
+    visibility: visible;
     box-sizing: border-box;
     width: 1.5em;
     height: 1.5em;
@@ -337,7 +335,7 @@
     align-items: center;
     gap: 0.28em;
     margin: 0;
-    padding: 0;
+    padding: 0.45em 0.15em;
     font-size: 0.66em;
     font-style: italic;
     line-height: 1;
@@ -350,15 +348,55 @@
 }
 
 .insert-date-chip:hover,
-.insert-date-chip:focus-visible {
+.insert-date-chip:focus-visible,
+.insert-date-chip:active {
     color: color-mix(in srgb, var(--paragraph-color-on-white) 78%, transparent);
     text-decoration: underline;
     text-underline-offset: 0.15em;
     outline: none;
 }
 
+/* Absolute chip doesn't reserve a line; pad the date so the stacked chip doesn't cover the next one. */
+.game-date-entry.has-date-chip-below {
+    padding-bottom: 1.6em;
+}
+
 .add-session-btn {
     display: none;
+}
+
+/* Own row under the checkbox, centered, same quiet width on every viewport. */
+body.edit-mode.is-lucy #checkboxes > .checkbox-div {
+    flex: 1 0 100%;
+}
+
+body.edit-mode.is-lucy .add-session-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 72%;
+    max-width: 72%;
+    box-sizing: border-box;
+    margin: 1.15em auto 0;
+    padding: 0.35em 0.7em;
+    border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-heading);
+    font-family: var(--subheading-font);
+    font-size: 1em;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    line-height: 1;
+    cursor: pointer;
+}
+
+body.edit-mode.is-lucy .add-session-btn:hover,
+body.edit-mode.is-lucy .add-session-btn:focus-visible,
+body.edit-mode.is-lucy .add-session-btn:active {
+    background: color-mix(in srgb, var(--color-oxblood) 8%, transparent);
+    outline: none;
 }
 
 
@@ -443,7 +481,7 @@
     left: 50%;
     bottom: 1.25rem;
     z-index: 800;
-    transform: translateX(-50%) translateY(0.75rem);
+    transform: translateX(-50%) translateY(calc(100% + 2rem));
     display: inline-flex;
     align-items: center;
     gap: 0.4em;
@@ -459,7 +497,7 @@
     box-shadow: 0 2px 12px var(--color-shadow);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+    transition: opacity 0.25s ease, transform 0.25s ease, background 0.2s ease;
 }
 
 .back-to-top:hover,
@@ -476,6 +514,13 @@
 .back-to-top-arrow {
     font-size: 1.05em;
     line-height: 1;
+}
+
+/* Same gap as the resting offset, sitting above the mobile Save/Cancel footer. */
+@media screen and (max-width: 899px) {
+    body.edit-mode .back-to-top {
+        bottom: calc(3.75rem + 1.25rem + env(safe-area-inset-bottom));
+    }
 }
 
 
@@ -671,32 +716,6 @@
         margin-top: 1em;
     }
 
-    body.edit-mode.is-lucy .add-session-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 72%;
-        align-self: center;
-        margin: 1.15em auto 0;
-        padding: 0.35em 0.7em;
-        border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
-        border-radius: 8px;
-        background: transparent;
-        color: var(--color-heading);
-        font-family: var(--subheading-font);
-        font-size: 1em;
-        font-weight: 400;
-        letter-spacing: 0.06em;
-        line-height: 1;
-        cursor: pointer;
-    }
-
-    body.edit-mode.is-lucy .add-session-btn:hover,
-    body.edit-mode.is-lucy .add-session-btn:focus-visible {
-        background: color-mix(in srgb, var(--color-oxblood) 8%, transparent);
-        outline: none;
-    }
-
     .entry-blocks {
         font-size: 1.05em;
     }
@@ -705,6 +724,25 @@
     .game-date-heading {
         font-size: 1.4em;
         scroll-margin-top: calc(var(--site-header-height, 3.5rem) + 0.75rem);
+    }
+
+    /* Hover/focus reveals the ×; keep titles clear only while it is shown. */
+    .log-heading .session-title,
+    .log-heading .game-date-heading {
+        padding-right: 0;
+    }
+
+    .log-heading:focus-within .session-title,
+    .log-heading:focus-within .game-date-heading {
+        padding-right: 1.7em;
+    }
+
+    .log-heading-remove {
+        visibility: hidden;
+    }
+
+    .log-heading:focus-within .log-heading-remove {
+        visibility: visible;
     }
 
     .game-date-entry {

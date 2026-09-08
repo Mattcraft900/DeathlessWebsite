@@ -29,6 +29,7 @@ import {
     setAllEntriesEditable,
 } from "./blocks.js";
 import {
+    cancelPendingReveal,
     requestRevealIfCovered,
     setKeyboardRevealHandler,
 } from "./edit-scroll.js";
@@ -120,12 +121,84 @@ export function setHeadingEditHandlers(handlers) {
     discardHeadings = handlers.discard ?? null;
 }
 
+/**
+ * A heading or block near the top of the viewport, so Edit chrome inserted
+ * above it does not slide the reading position. Shared by desktop and mobile.
+ * @typedef {{ key: string, top: number }} ViewportAnchor
+ */
+
+/** @returns {ViewportAnchor|null} */
+function captureViewportAnchor() {
+    const header = document.getElementById("site-header");
+    const topLimit = (header?.getBoundingClientRect().bottom ?? 0) + 8;
+    const nodes = document.querySelectorAll(
+        ".entry-block[data-block-id], .session-title[id], .game-date-heading[id]",
+    );
+    /** @type {ViewportAnchor|null} */
+    let best = null;
+    for (const el of nodes) {
+        if (!(el instanceof HTMLElement)) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.bottom < topLimit || rect.top > window.innerHeight) continue;
+        const key = el.dataset.blockId
+            ? `block:${el.dataset.blockId}`
+            : el.id
+                ? `id:${el.id}`
+                : "";
+        if (!key) continue;
+        if (!best || rect.top < best.top) best = { key, top: rect.top };
+    }
+    return best;
+}
+
+/**
+ * @param {string} key
+ * @returns {HTMLElement|null}
+ */
+function findViewportAnchor(key) {
+    if (key.startsWith("block:")) {
+        const id = key.slice("block:".length);
+        const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(id) : id;
+        const el = document.querySelector(`.entry-block[data-block-id="${escaped}"]`);
+        return el instanceof HTMLElement ? el : null;
+    }
+    if (key.startsWith("id:")) {
+        const el = document.getElementById(key.slice("id:".length));
+        return el instanceof HTMLElement ? el : null;
+    }
+    return null;
+}
+
+/**
+ * @param {ViewportAnchor|null} anchor
+ */
+function restoreViewportAnchor(anchor) {
+    if (!anchor) return;
+    const el = findViewportAnchor(anchor.key);
+    if (!el) return;
+    const delta = el.getBoundingClientRect().top - anchor.top;
+    if (Math.abs(delta) < 1) return;
+    cancelPendingReveal();
+    window.scrollBy({ top: delta, behavior: "instant" });
+    lastScrollY = window.scrollY || document.documentElement.scrollTop;
+}
+
+/**
+ * @param {ViewportAnchor|null} anchor
+ */
+function settleViewportAnchor(anchor) {
+    restoreViewportAnchor(anchor);
+    requestAnimationFrame(() => restoreViewportAnchor(anchor));
+}
+
 function enterEditMode() {
     if (editMode) return;
+    const anchor = captureViewportAnchor();
     editMode = true;
     setAllEntriesEditable(document, true);
     notifyEditModeChange();
     captureHeadings?.();
+    settleViewportAnchor(anchor);
 }
 
 /** Enter body Edit mode if a writer is signed in. No-op if already editing. */
@@ -141,6 +214,7 @@ export function ensureEditMode() {
  */
 function exitEditMode({ discard = false } = {}) {
     if (!editMode) return;
+    const anchor = captureViewportAnchor();
     if (discard) {
         discardAllEntryBlocks(document);
         discardHeadings?.();
@@ -149,6 +223,7 @@ function exitEditMode({ discard = false } = {}) {
     }
     editMode = false;
     notifyEditModeChange();
+    settleViewportAnchor(anchor);
 }
 
 /* ---------------------------------------------------------- */

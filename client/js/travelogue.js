@@ -23,7 +23,6 @@ const jumpToList = document.getElementById("jump-to-list");
 const jumpSidebar = document.getElementById("jump-sidebar");
 const jumpToggle = document.getElementById("jump-toggle");
 const formatSidebar = document.getElementById("format-sidebar");
-const desktopMq = window.matchMedia("(min-width: 900px)");
 
 /** Wait after closing the jump menu before scrolling (CSS transition). */
 const JUMP_COLLAPSE_MS = 320;
@@ -53,12 +52,9 @@ function isLucy() {
     return getCurrentWriter()?.slug === "lucy";
 }
 
-function isLucyDesktop() {
-    return isLucy() && desktopMq.matches;
-}
-
-function lucyCanEditHeadings() {
-    return isLucyDesktop() && isEditMode();
+/** Heading rename/hide, Add Session, the date chip, and Write… follow Edit mode on every width. */
+function lucyCanAuthor() {
+    return isLucy() && isEditMode();
 }
 
 function defaultSessionTitle(now = new Date()) {
@@ -92,7 +88,7 @@ function renderGameDateHeading(chunk) {
  * @returns {HTMLElement|null}
  */
 function renderHeading(spec) {
-    const editable = lucyCanEditHeadings();
+    const editable = lucyCanAuthor();
     if (!spec.showHeading) {
         if (spec.kind !== "session" || !editable) return null;
         return renderSessionRestore(spec.id, spec.title);
@@ -122,7 +118,7 @@ function renderHeading(spec) {
         spec.kind === "session" ? "Remove session title" : "Remove date",
     );
     remove.textContent = "×";
-    remove.addEventListener("mousedown", (e) => {
+    remove.addEventListener("pointerdown", (e) => {
         e.preventDefault();
     });
     remove.addEventListener("click", () => {
@@ -679,7 +675,7 @@ function setupFormatControls() {
 function syncLucyChrome() {
     document.body.classList.toggle("is-lucy", isLucy());
     const host = document.getElementById("checkboxes");
-    if (!isLucy() || !isEditMode() || !desktopMq.matches) {
+    if (!lucyCanAuthor()) {
         addSessionBtn?.remove();
         addSessionBtn = null;
         return;
@@ -715,7 +711,7 @@ function syncHeadingChrome() {
 
 function applySessionRestore(block) {
     const existing = block.querySelector(".log-heading-restore");
-    if (!lucyCanEditHeadings() || block.dataset.headingHidden !== "1") {
+    if (!lucyCanAuthor() || block.dataset.headingHidden !== "1") {
         existing?.remove();
         return;
     }
@@ -724,7 +720,7 @@ function applySessionRestore(block) {
 }
 
 function applyHeadingChrome(h) {
-    const want = lucyCanEditHeadings();
+    const want = lucyCanAuthor();
     const row = h.closest(".log-heading");
     if (!want) {
         h.contentEditable = "false";
@@ -755,7 +751,7 @@ function applyHeadingChrome(h) {
         h.classList.contains("session-title") ? "Remove session title" : "Remove date",
     );
     remove.textContent = "×";
-    remove.addEventListener("mousedown", (e) => {
+    remove.addEventListener("pointerdown", (e) => {
         e.preventDefault();
     });
     remove.addEventListener("click", () => {
@@ -1062,7 +1058,7 @@ async function startWriting(container, { at = "end" } = {}) {
 
 function syncSessionWriteLine(sessionBlock) {
     sessionBlock.querySelectorAll(".lucy-write-line").forEach((el) => el.remove());
-    if (!lucyCanEditHeadings()) return;
+    if (!lucyCanAuthor()) return;
     if (sessionBlock.querySelector(".entry-block")) return;
     const article = sessionBlock.querySelector(".game-date-entry");
     const container = article?.querySelector(".entry-blocks");
@@ -1099,7 +1095,7 @@ function isBlankBlock(span) {
 
 function isSolitaryEmptyLucyParagraph(span) {
     if (!(span instanceof HTMLElement)) return false;
-    if (!isEditMode() || !isLucyDesktop()) return false;
+    if (!lucyCanAuthor()) return false;
     if (!span.classList.contains("entry-block") || !span.classList.contains("voice-lucy")) return false;
     if (!span.isContentEditable) return false;
     const writer = getCurrentWriter();
@@ -1127,7 +1123,7 @@ function ensureDateChip() {
     dateChip.className = "insert-date-chip";
     dateChip.hidden = true;
     dateChip.textContent = "Insert game date here";
-    dateChip.addEventListener("mousedown", (e) => {
+    dateChip.addEventListener("pointerdown", (e) => {
         e.preventDefault();
     });
     dateChip.addEventListener("click", () => {
@@ -1140,6 +1136,8 @@ function ensureDateChip() {
 function hideDateChip() {
     if (!dateChip) return;
     dateChip.hidden = true;
+    dateChip.classList.remove("is-below");
+    dateChip._span?.closest(".game-date-entry")?.classList.remove("has-date-chip-below");
     dateChip._span = null;
 }
 
@@ -1147,14 +1145,36 @@ function showDateChipFor(span) {
     const chip = ensureDateChip();
     const article = span.closest(".game-date-entry");
     if (!article) return;
+    chip._span?.closest(".game-date-entry")?.classList.remove("has-date-chip-below");
     if (chip.parentElement !== article) article.appendChild(chip);
+    chip.hidden = false;
+    placeDateChip(chip, span, article);
+    chip._span = span;
+}
+
+function placeDateChip(chip, span, article) {
+    const gap = 10;
     const spanRect = span.getBoundingClientRect();
     const artRect = article.getBoundingClientRect();
-    chip.hidden = false;
-    const chipHeight = chip.getBoundingClientRect().height;
-    chip.style.top = `${spanRect.top - artRect.top + (spanRect.height - chipHeight) / 2}px`;
-    chip.style.left = `${spanRect.right - artRect.left + 10}px`;
-    chip._span = span;
+    const chipWidth = chip.offsetWidth;
+    const chipHeight = chip.offsetHeight;
+    const besideLeft = spanRect.right - artRect.left + gap;
+    const fitsBeside = besideLeft + chipWidth <= artRect.width - 4;
+
+    chip.classList.toggle("is-below", !fitsBeside);
+    article.classList.toggle("has-date-chip-below", !fitsBeside);
+
+    if (fitsBeside) {
+        chip.style.right = "";
+        chip.style.left = `${besideLeft}px`;
+        chip.style.top = `${spanRect.top - artRect.top + (spanRect.height - chipHeight) / 2}px`;
+        return;
+    }
+
+    const right = Math.max(0, artRect.right - spanRect.right);
+    chip.style.left = "auto";
+    chip.style.right = `${right}px`;
+    chip.style.top = `${spanRect.bottom - artRect.top + 2}px`;
 }
 
 function syncDateChip(target) {
@@ -1263,7 +1283,7 @@ function applyInsertedDate(sourceContainer, data, writeAt) {
 }
 
 async function addSession() {
-    if (!isLucyDesktop() || !addSessionBtn) return;
+    if (!lucyCanAuthor() || !addSessionBtn) return;
     addSessionBtn.disabled = true;
     try {
         const data = await apiPost("/travelogue/sessions", { title: defaultSessionTitle() });
@@ -1338,7 +1358,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             syncAllWriteLines();
         }, 0);
     });
-    window.addEventListener("scroll", () => syncDateChip(dateChip?._span), true);
+    const repositionDateChip = () => syncDateChip(dateChip?._span);
+    window.addEventListener("scroll", repositionDateChip, true);
+    window.visualViewport?.addEventListener("resize", repositionDateChip);
+    window.visualViewport?.addEventListener("scroll", repositionDateChip);
     window.addEventListener("resize", () => {
         syncLucyChrome();
         syncHeadingChrome();
