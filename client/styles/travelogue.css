@@ -365,11 +365,6 @@
     display: none;
 }
 
-/* Own row under the checkbox, centered, same quiet width on every viewport. */
-body.edit-mode.is-lucy #checkboxes > .checkbox-div {
-    flex: 1 0 100%;
-}
-
 body.edit-mode.is-lucy .add-session-btn {
     display: flex;
     align-items: center;
@@ -397,6 +392,17 @@ body.edit-mode.is-lucy .add-session-btn:focus-visible,
 body.edit-mode.is-lucy .add-session-btn:active {
     background: color-mix(in srgb, var(--color-oxblood) 8%, transparent);
     outline: none;
+}
+
+/*
+ * Mobile row+wrap: force the checkbox onto its own row so Add Session sits under it.
+ * Do not use this on desktop — column + wrap would park the button in a clipped
+ * second column beside the sidebar (overflow-x: hidden).
+ */
+@media screen and (max-width: 899px) {
+    body.edit-mode.is-lucy #checkboxes > .checkbox-div {
+        flex: 1 0 100%;
+    }
 }
 
 
@@ -714,6 +720,7 @@ body.edit-mode.is-lucy .add-session-btn:active {
 
     #format-sidebar .format-controls__options {
         margin-top: 1em;
+        flex-wrap: nowrap;
     }
 
     .entry-blocks {
